@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI智能可轉債競拍系統 v3.0 (資料驅動版) - Rex大叔的168台股投資教室</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* 標題區 */
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .data-badge {
+            display: inline-block;
+            background: #FF9800;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        /* 主要內容區 */
+        .evaluation-container {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 20px;
+        }
+
+        .input-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .input-panel h2 {
+            color: #667eea;
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+        }
+
+        .form-section h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group small {
+            display: block;
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+            margin-top: 10px;
+        }
+
+        .info-box .title {
+            color: #1976D2;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .info-box .content {
+            color: #555;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 20px;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .calculate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* 結果顯示區 */
+        .result-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            min-height: 600px;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .welcome-message h2 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .welcome-message p {
+            color: #666;
+            font-size: 18px;
+            line-height: 1.8;
+            margin-bottom: 40px;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-box .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-box .label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 評分結果 */
+        .evaluation-result {
+            display: none;
+        }
+
+        .evaluation-result.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .result-header h2 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .score-summary {
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .score-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+
+        .score-circle {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .score-details {
+            text-align: left;
+        }
+
+        .score-grade {
+            font-size: 48px;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .detail-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 25px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .detail-section h3 {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .strategy-card {
+            border: 2px solid;
+            border-radius: 12px;
+            padding: 25px;
+        }
+
+        .strategy-card.conservative {
+            border-color: #4CAF50;
+            background: #f1f8f4;
+        }
+
+        .strategy-card.balanced {
+            border-color: #FF9800;
+            background: #fff8f0;
+        }
+
+        .strategy-card.aggressive {
+            border-color: #f44336;
+            background: #fff0f0;
+        }
+
+        .strategy-card h4 {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .strategy-card .price {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 1200px) {
+            .evaluation-container {
+                grid-template-columns: 1fr;
+            }
+
+            .input-panel {
+                position: relative;
+                top: 0;
+            }
+
+            .score-display {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 載入提示 -->
+    <div id="loading" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+    ">
+        載入統計數據中...
+    </div>
+    
+    <div class="container" style="display: none;">
+        <!-- 標題區 -->
+        <div class="header">
+            <h1>
+                🤖 AI智能可轉債競拍系統
+                <span class="version-badge">v3.0</span>
+                <span class="data-badge">Excel完整資料庫</span>
+            </h1>
+            <p class="subtitle" id="headerSubtitle">
+                Rex大叔的168台股投資教室 | 載入中...
+            </p>
+        </div>
+
+        <!-- 主要內容 -->
+        <div class="evaluation-container">
+            <!-- 左側：輸入表單 -->
+            <div class="input-panel">
+                <h2>📋 輸入標的資料</h2>
+
+                <form id="evaluationForm">
+                    <!-- 基本資料 -->
+                    <div class="form-section">
+                        <h3>📌 基本資料</h3>
+                        
+                        <div class="form-group">
+                            <label>CB名稱 *</label>
+                            <input type="text" id="cbName" required placeholder="例如：台光電七">
+                            <small>提示：輸入CB名稱後會自動顯示掛牌價格參考</small>
+                            <div id="cbNameInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 掛牌價格參考</div>
+                                <div class="content" id="cbPriceStats"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>股本 (億元) *</label>
+                            <input type="number" id="capital" step="0.01" required placeholder="例如：33.80">
+                            <div id="capitalInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 歷史統計</div>
+                                <div class="content" id="capitalStats"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>產業分類 *</label>
+                            <select id="industry" required>
+                                <option value="">請選擇...</option>
+                            </select>
+                            <div id="industryInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 歷史統計</div>
+                                <div class="content" id="industryStats"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>發行券商</label>
+                            <select id="broker">
+                                <option value="">請選擇...</option>
+                            </select>
+                            <small>選填項目</small>
+                        </div>
+                    </div>
+
+                    <!-- 發行條件 -->
+                    <div class="form-section">
+                        <h3>💰 發行條件</h3>
+                        
+                        <div class="form-group">
+                            <label>發行規模 (億元) *</label>
+                            <input type="number" id="issueSize" step="0.1" required placeholder="例如：30">
+                            <div id="sizeInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 歷史統計</div>
+                                <div class="content" id="sizeStats"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>轉換價格 (元) *</label>
+                            <input type="number" id="conversionPrice" step="0.01" required placeholder="例如：490.7">
+                            <div id="conversionInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 歷史統計</div>
+                                <div class="content" id="conversionStats"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>發行年期 *</label>
+                            <select id="years" required>
+                                <option value="">請選擇...</option>
+                                <option value="3">3年期</option>
+                                <option value="5">5年期</option>
+                                <option value="7">7年期</option>
+                            </select>
+                            <div id="yearsInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 歷史統計</div>
+                                <div class="content" id="yearsStats"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>擔保情況 *</label>
+                            <select id="guarantee" required>
+                                <option value="">請選擇...</option>
+                                <option value="有擔保">有擔保</option>
+                                <option value="無擔保">無擔保</option>
+                            </select>
+                            <div id="guaranteeInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 歷史統計</div>
+                                <div class="content" id="guaranteeStats"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>信用評等 (TCRI) *</label>
+                            <select id="rating" required>
+                                <option value="">請選擇...</option>
+                                <option value="2-3分">2-3分</option>
+                                <option value="4-5分">4-5分</option>
+                                <option value="6-7分">6-7分</option>
+                                <option value="8-9分">8-9分</option>
+                                <option value="BBB">BBB級</option>
+                            </select>
+                            <div id="ratingInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 歷史統計</div>
+                                <div class="content" id="ratingStats"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 競拍資料 -->
+                    <div class="form-section">
+                        <h3>🎯 競拍資料</h3>
+                        
+                        <div class="form-group">
+                            <label>競拍截止日1:30收盤價格 (元) *</label>
+                            <input type="number" id="stockPrice" step="0.01" required placeholder="例如：461.5">
+                            <small>請填入競拍截止當日下午1:30的收盤價格</small>
+                        </div>
+                    </div>
+
+                    <!-- 市場氛圍（動態計算） -->
+                    <div class="form-section">
+                        <h3>📊 近期市場競拍氛圍</h3>
+                        <div id="marketSentiment" class="info-box">
+                            <div class="title">🌡️ 動態市場氛圍分析</div>
+                            <div class="content">
+                                請先選擇：擔保情況<br>
+                                系統將自動計算市場競拍氛圍
+                            </div>
+                        </div>
+                        <small style="color: #999; font-size: 12px; display: block; margin-top: 10px;">
+                            💡 投標倍數：反映市場參與熱度 / 投標均張：反映主力大戶意圖
+                        </small>
+                    </div>
+                            <div class="content">載入統計數據中...</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="calculate-btn" id="submitBtn">
+                        🎯 開始AI評估
+                    </button>
+                </form>
+            </div>
+
+            <!-- 右側：評估結果 -->
+            <div class="result-panel">
+                <!-- 歡迎訊息 -->
+                <div id="welcomeMsg" class="welcome-message">
+                    <h2>歡迎使用AI智能競拍評估系統</h2>
+                    <p>整合Excel完整資料庫<br>2,232檔CB基本資料 + 286檔競拍統計分析</p>
+                    
+                    <div class="stats-summary" id="statsSummary">
+                        <!-- 動態生成 -->
+                    </div>
+                </div>
+
+                <!-- 評估結果（初始隱藏） -->
+                <div id="evaluationResult" class="evaluation-result">
+                    <!-- 動態生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let statistics = null;
+        let cbDatabase = null;
+        let auctionRawData = null;  // 競拍原始資料（用於動態計算市場氛圍）
+
+        // ==========================================
+        // 載入統計數據
+        // ==========================================
+        async function loadStatistics() {
+            const loadingDiv = document.getElementById('loading');
+            const containerDiv = document.querySelector('.container');
+            
+            try {
+                console.log('🔄 開始載入資料...');
+                loadingDiv.textContent = '載入統計數據中... (正在讀取檔案)';
+                
+                const response = await fetch('cb_data_integrated.json');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP錯誤！狀態碼: ${response.status}`);
+                }
+                
+                loadingDiv.textContent = '載入統計數據中... (正在解析資料)';
+                const data = await response.json();
+                
+                console.log('📦 收到資料:', data);
+                
+                // 驗證資料結構
+                if (!data['統計數據']) {
+                    throw new Error('資料中缺少「統計數據」');
+                }
+                if (!data['CB資料庫']) {
+                    throw new Error('資料中缺少「CB資料庫」');
+                }
+                if (!data['競拍原始資料']) {
+                    throw new Error('資料中缺少「競拍原始資料」');
+                }
+                
+                statistics = data['統計數據'];
+                cbDatabase = data['CB資料庫'];
+                auctionRawData = data['競拍原始資料'];
+                
+                console.log('✅ 統計數據載入成功', statistics);
+                console.log('✅ CB資料庫載入成功，共', Object.keys(cbDatabase).length, '檔');
+                console.log('✅ 競拍原始資料載入成功，共', auctionRawData.length, '筆');
+                
+                loadingDiv.textContent = '載入統計數據中... (正在初始化介面)';
+                
+                // 初始化介面
+                initializeUI();
+                
+                // 隱藏載入訊息
+                loadingDiv.style.display = 'none';
+                containerDiv.style.display = 'block';
+                
+                console.log('✅ 系統初始化完成');
+                
+            } catch (error) {
+                console.error('❌ 資料載入失敗:', error);
+                loadingDiv.innerHTML = `
+                    <div style="color: #f44336; padding: 20px; background: #ffebee; border-radius: 8px; margin: 20px;">
+                        <h3 style="margin-top: 0;">❌ 資料載入失敗</h3>
+                        <p><strong>錯誤訊息：</strong>${error.message}</p>
+                        <p><strong>可能原因：</strong></p>
+                        <ul style="text-align: left;">
+                            <li>cb_data_integrated.json 檔案不存在</li>
+                            <li>檔案與HTML不在同一目錄</li>
+                            <li>檔案格式錯誤</li>
+                            <li>瀏覽器需要透過HTTP伺服器開啟（不能直接開檔案）</li>
+                        </ul>
+                        <p><strong>解決方式：</strong></p>
+                        <ol style="text-align: left;">
+                            <li>確認 cb_data_integrated.json 與 HTML 在同一資料夾</li>
+                            <li>使用本地伺服器開啟（如 Python: python -m http.server）</li>
+                            <li>檢查瀏覽器Console（F12）查看詳細錯誤</li>
+                        </ol>
+                    </div>
+                `;
+            }
+        }
+
+        // ==========================================
+        // 初始化介面
+        // ==========================================
+        function initializeUI() {
+            // 更新標題統計資訊
+            const totalCB = Object.keys(cbDatabase).length;
+            const totalAuction = statistics['資料期間']['總筆數'];
+            document.getElementById('headerSubtitle').textContent = 
+                `Rex大叔的168台股投資教室 | 整合${totalCB.toLocaleString()}檔CB完整資料與${totalAuction}檔競拍統計`;
+            
+            // 填入產業選項
+            const industrySelect = document.getElementById('industry');
+            const industries = Object.keys(statistics['維度統計']['產業']).sort();
+            
+            industries.forEach(industry => {
+                const option = document.createElement('option');
+                option.value = industry;
+                option.textContent = industry;
+                industrySelect.appendChild(option);
+            });
+
+            // 填入發行券商選項
+            const brokerSelect = document.getElementById('broker');
+            const brokers = [
+                '統一證券', '第一金證', '國票證券', '富邦證券', '永豐金證',
+                '凱基證券', '中信證券', '台新證券', '兆豐證券', '福邦證券',
+                '群益證券', '台中銀證', '元大證券', '元富證券', '國泰證券',
+                '華南永昌', '合庫證券', '宏遠證券', '康和證券', '永豐證券', '玉山證券'
+            ];
+            
+            brokers.forEach(broker => {
+                const option = document.createElement('option');
+                option.value = broker;
+                option.textContent = broker;
+                brokerSelect.appendChild(option);
+            });
+
+            // 顯示統計摘要
+            showStatsSummary();
+            
+            // 綁定選擇事件（顯示歷史統計）
+            bindInputEvents();
+        }
+
+        // ==========================================
+        // 顯示統計摘要
+        // ==========================================
+        function showStatsSummary() {
+            const summaryDiv = document.getElementById('statsSummary');
+            const dataInfo = statistics['資料期間'];
+            const cbCount = Object.keys(cbDatabase).length;
+            
+            summaryDiv.innerHTML = `
+                <div class="stat-box">
+                    <div class="number">${cbCount}</div>
+                    <div class="label">CB資料庫</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number">${dataInfo['總筆數']}</div>
+                    <div class="label">競拍案例</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number">31</div>
+                    <div class="label">產業類別</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number">8</div>
+                    <div class="label">統計維度</div>
+                </div>
+            `;
+        }
+
+        // 繼續下一部分...
+    </script>
+    
+    <script>
+        // ==========================================
+        // 計算動態市場氛圍（基於投標倍數和投標均張）
+        // ==========================================
+        function calculateDynamicMarketSentiment(guarantee) {
+            if (!guarantee || !auctionRawData) {
+                return null;
+            }
+            
+            // 篩選相同擔保的案例
+            const similarCases = auctionRawData.filter(item => item['擔保'] === guarantee);
+            
+            if (similarCases.length === 0) {
+                return { error: '找不到案例' };
+            }
+            
+            // 計算不同時間段的市場氛圍
+            const today = new Date();
+            const periods = [
+                { days: 30, label: '近1月' },
+                { days: 90, label: '近3月' },
+                { days: 180, label: '近6月' },
+                { days: 365, label: '近12月' }
+            ];
+            
+            const results = {};
+            
+            periods.forEach(({ days, label }) => {
+                const cutoffDate = new Date(today);
+                cutoffDate.setDate(cutoffDate.getDate() - days);
+                
+                const periodCases = similarCases.filter(item => {
+                    const itemDate = new Date(item['開標日期']);
+                    return itemDate >= cutoffDate;
+                });
+                
+                if (periodCases.length > 0) {
+                    // 計算平均投標倍數
+                    const avgMultiple = periodCases.reduce((sum, item) => sum + item['投標倍數'], 0) / periodCases.length;
+                    
+                    // 計算平均投標均張
+                    const avgPerBid = periodCases.reduce((sum, item) => sum + item['投標均張'], 0) / periodCases.length;
+                    
+                    // 計算平均最低溢價
+                    const avgLowestPremium = periodCases.reduce((sum, item) => sum + item['最低溢價'], 0) / periodCases.length;
+                    
+                    // 找出投標倍數前三名
+                    const top3 = periodCases
+                        .map(item => ({
+                            cbName: item['開標日期'], // 這裡用日期代替，實際可能需要CB名稱
+                            bidMultiple: item['投標倍數'].toFixed(2),
+                            date: item['開標日期']
+                        }))
+                        .sort((a, b) => parseFloat(b.bidMultiple) - parseFloat(a.bidMultiple))
+                        .slice(0, 3);
+                    
+                    // 計算趨勢（比較前後半期）
+                    let changePercent = 0;
+                    let trend, trendIcon;
+                    
+                    if (periodCases.length >= 4) {
+                        const sortedCases = periodCases.sort((a, b) => new Date(a['開標日期']) - new Date(b['開標日期']));
+                        const midPoint = Math.floor(sortedCases.length / 2);
+                        const firstHalf = sortedCases.slice(0, midPoint);
+                        const secondHalf = sortedCases.slice(midPoint);
+                        
+                        const firstAvgMultiple = firstHalf.length > 0 ? 
+                            firstHalf.reduce((sum, item) => sum + item['投標倍數'], 0) / firstHalf.length : 0;
+                        const secondAvgMultiple = secondHalf.length > 0 ?
+                            secondHalf.reduce((sum, item) => sum + item['投標倍數'], 0) / secondHalf.length : 0;
+                        
+                        const change = secondAvgMultiple - firstAvgMultiple;
+                        changePercent = firstAvgMultiple > 0 ? (change / firstAvgMultiple * 100) : 0;
+                        
+                        // 判斷趨勢
+                        if (changePercent > 20) {
+                            trend = "強勢上升";
+                            trendIcon = "🔥";
+                        } else if (changePercent > 10) {
+                            trend = "溫和上升";
+                            trendIcon = "📈";
+                        } else if (changePercent > -10) {
+                            trend = "平穩";
+                            trendIcon = "➡️";
+                        } else if (changePercent > -20) {
+                            trend = "溫和下降";
+                            trendIcon = "📉";
+                        } else {
+                            trend = "急劇下降";
+                            trendIcon = "❄️";
+                        }
+                    } else {
+                        // 樣本不足，但仍顯示基本趨勢
+                        trend = "平穩";
+                        trendIcon = "➡️";
+                    }
+                    
+                    // 判斷市場熱度（基於投標倍數）
+                    let heatLevel, heatColor;
+                    if (avgMultiple >= 4) {
+                        heatLevel = "極熱";
+                        heatColor = "#f44336";
+                    } else if (avgMultiple >= 3) {
+                        heatLevel = "偏熱";
+                        heatColor = "#FF9800";
+                    } else if (avgMultiple >= 2) {
+                        heatLevel = "溫和";
+                        heatColor = "#4CAF50";
+                    } else {
+                        heatLevel = "冷清";
+                        heatColor = "#2196F3";
+                    }
+                    
+                    results[label] = {
+                        案例數: periodCases.length,
+                        投標倍數: avgMultiple.toFixed(2),
+                        投標均張: avgPerBid.toFixed(2),
+                        平均最低溢價: (avgLowestPremium * 100).toFixed(2),
+                        趨勢: trend,
+                        趨勢圖標: trendIcon,
+                        變化: changePercent.toFixed(1),
+                        熱度: heatLevel,
+                        熱度顏色: heatColor,
+                        樣本充足: periodCases.length >= 4,
+                        top3Cases: periodCases.length >= 3 ? top3 : null
+                    };
+                }
+            });
+            
+            return { 
+                totalCases: similarCases.length,
+                results: results
+            };
+        }
+        
+        // 更新市場氛圍顯示
+        function updateMarketSentimentDisplay() {
+            const guarantee = document.getElementById('guarantee').value;
+            
+            if (!guarantee) {
+                return;  // 尚未選擇擔保情況
+            }
+            
+            const sentiment = calculateDynamicMarketSentiment(guarantee);
+            const sentimentDiv = document.getElementById('marketSentiment');
+            
+            if (!sentiment || sentiment.error) {
+                sentimentDiv.innerHTML = `
+                    <div class="title">⚠️ 近期市場競拍氛圍</div>
+                    <div class="content" style="color: #f44336;">
+                        找不到符合條件的案例
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="title">🌡️ 近期市場競拍氛圍（${guarantee} / 共${sentiment.totalCases}檔）</div>
+                <div class="content">
+            `;
+            
+            ['近1月', '近3月', '近6月', '近12月'].forEach(period => {
+                if (sentiment.results[period]) {
+                    const data = sentiment.results[period];
+                    
+                    // 統一顯示格式，樣本不足時用黃色邊框提醒
+                    const borderColor = data.樣本充足 ? data.熱度顏色 : '#ffc107';
+                    const bgColor = data.樣本充足 ? '#f8f9fa' : '#fff3cd';
+                    
+                    html += `
+                        <div style="margin-bottom: 15px; padding: 12px; background: ${bgColor}; border-radius: 8px; border-left: 4px solid ${borderColor};">
+                            <div style="font-weight: bold; margin-bottom: 8px;">
+                                ${period} ${data.樣本充足 ? data.趨勢圖標 + ' ' + data.趨勢 : '⚠️ 樣本不足'}
+                                ${data.樣本充足 ? `<span style="color: ${data.熱度顏色}; font-size: 14px;">（${data.熱度}）</span>` : ''}
+                            </div>
+                            <div style="font-size: 13px; line-height: 1.8; color: ${data.樣本充足 ? '#666' : '#856404'};">
+                                📊 樣本數：<strong>${data.案例數}檔</strong>${!data.樣本充足 ? ' (樣本數 < 4，趨勢參考價值低)' : ''}<br>
+                                🎯 投標倍數：<strong style="color: ${data.樣本充足 ? data.熱度顏色 : '#856404'}">${data.投標倍數}倍</strong>
+                                ${data.樣本充足 ? ` <span style="font-size: 12px;">(變化 ${data.變化}%)</span>` : ' (變化 0.0%)'}<br>
+                                💰 投標均張：<strong>${data.投標均張}張</strong><br>
+                                📈 平均最低溢價：<strong>${data.平均最低溢價 || '未知'}%</strong>
+                            </div>
+                            ${data.top3Cases ? `
+                                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
+                                    <div style="font-size: 12px; color: #888; margin-bottom: 5px;">🏆 投標倍數前三名：</div>
+                                    <div style="font-size: 11px; line-height: 1.6; color: #666;">
+                                        ${data.top3Cases.map((c, idx) => `
+                                            ${idx+1}. ${c.cbName} - ${c.bidMultiple}倍 (${c.date})
+                                        `).join('<br>')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+            });
+            
+            html += `
+                    <div style="margin-top: 15px; padding: 12px; background: #e3f2fd; border-radius: 8px; border-left: 3px solid #2196F3;">
+                        <div style="color: #1976D2; font-weight: bold; margin-bottom: 5px;">💡 指標說明</div>
+                        <div style="font-size: 12px; color: #555; line-height: 1.6;">
+                            <strong>投標倍數</strong>：反映市場參與熱度，越高代表競爭越激烈<br>
+                            <strong>投標均張</strong>：反映主力大戶意圖，越高代表大資金搶籌碼<br>
+                            <strong>平均最低溢價</strong>：該期間最低得標的平均溢價水準<br>
+                            <strong>樣本充足</strong>：至少需要4檔案例才能可靠判斷趨勢
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            sentimentDiv.innerHTML = html;
+        }
+
+        // ==========================================
+        // 輔助函數
+        // ==========================================
+        
+        // 取得發行規模區間
+        function getSizeRange(size) {
+            if (size < 2) return '<2億';
+            if (size < 5) return '2-5億';
+            if (size < 10) return '5-10億';
+            if (size < 15) return '10-15億';
+            if (size < 20) return '15-20億';
+            return '>20億';
+        }
+        
+        // 取得股本區間
+        function getCapitalRange(capital) {
+            if (capital < 3) return '<3億';
+            if (capital < 6) return '3-6億';
+            if (capital < 10) return '6-10億';
+            if (capital < 15) return '10-15億';
+            if (capital < 20) return '15-20億';
+            return '>20億';
+        }
+
+        // ==========================================
+        // 綁定輸入事件
+        // ==========================================
+        function bindInputEvents() {
+            // CB名稱查詢
+            document.getElementById('cbName').addEventListener('input', function() {
+                const cbName = this.value.trim();
+                if (cbName.length >= 2) {
+                    // 搜尋CB資料庫
+                    let found = null;
+                    for (const [code, data] of Object.entries(cbDatabase)) {
+                        if (data['名稱'].includes(cbName)) {
+                            found = data;
+                            break;
+                        }
+                    }
+                    
+                    if (found) {
+                        document.getElementById('cbNameInfo').style.display = 'block';
+                        const priceHigh = found['掛牌最高'] ? found['掛牌最高'].toFixed(2) : '無資料';
+                        const priceLow = found['掛牌最低'] ? found['掛牌最低'].toFixed(2) : '無資料';
+                        document.getElementById('cbPriceStats').innerHTML = `
+                            CB代號：${found['代號']}<br>
+                            股票代號：${found['股票代號']}<br>
+                            掛牌最高：<strong style="color: #f44336">${priceHigh}元</strong><br>
+                            掛牌最低：<strong style="color: #4CAF50">${priceLow}元</strong>
+                            ${found['資金用途'] ? '<br><br>資金用途：' + found['資金用途'] : ''}
+                        `;
+                    } else {
+                        document.getElementById('cbNameInfo').style.display = 'none';
+                    }
+                } else {
+                    document.getElementById('cbNameInfo').style.display = 'none';
+                }
+            });
+
+            // 股本輸入（新增統計提示）
+            document.getElementById('capital').addEventListener('input', function() {
+                if (this.value) {
+                    const capital = parseFloat(this.value);
+                    const range = getCapitalRange(capital);
+                    
+                    const data = statistics['維度統計']['股本'][range];
+                    const percentage = data['樣本比例'] || 0;
+                    
+                    document.getElementById('capitalInfo').style.display = 'block';
+                    
+                    let html = `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('capitalStats').innerHTML = html;
+                    
+                    // 觸發市場氛圍更新
+                    updateMarketSentimentDisplay();
+                }
+            });
+
+            // 產業選擇
+            document.getElementById('industry').addEventListener('change', function() {
+                if (this.value) {
+                    const data = statistics['維度統計']['產業'][this.value];
+                    const percentage = data['樣本比例'] || 0;
+                    
+                    document.getElementById('industryInfo').style.display = 'block';
+                    
+                    let html = `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('industryStats').innerHTML = html;
+                    
+                    // 觸發市場氛圍更新
+                    updateMarketSentimentDisplay();
+                }
+            });
+
+            // 發行券商選擇（新增統計提示）
+            document.getElementById('broker').addEventListener('change', function() {
+                if (this.value && statistics['維度統計']['發行券商'][this.value]) {
+                    const data = statistics['維度統計']['發行券商'][this.value];
+                    
+                    // 移除舊的資訊框
+                    const oldInfo = document.getElementById('brokerInfo');
+                    if (oldInfo) oldInfo.remove();
+                    
+                    // 創建新的資訊框
+                    const infoDiv = document.createElement('div');
+                    infoDiv.id = 'brokerInfo';
+                    infoDiv.className = 'info-box';
+                    infoDiv.style.marginTop = '10px';
+                    
+                    const percentage = ((data['樣本數'] / 286) * 100).toFixed(2);
+                    
+                    infoDiv.innerHTML = `
+                        <div class="title">📊 歷史統計</div>
+                        <div class="content">
+                            歷史樣本：${data['樣本數']}檔 (${percentage}%)<br>
+                            平均掛牌最高：<strong style="color: #f44336">${data['平均掛牌最高']}元</strong><br>
+                            平均掛牌最低：<strong style="color: #4CAF50">${data['平均掛牌最低']}元</strong>
+                        </div>
+                    `;
+                    
+                    // 插入新的資訊框
+                    this.parentElement.appendChild(infoDiv);
+                } else {
+                    const oldInfo = document.getElementById('brokerInfo');
+                    if (oldInfo) oldInfo.remove();
+                }
+            });
+
+            // 發行規模
+            document.getElementById('issueSize').addEventListener('input', function() {
+                if (this.value) {
+                    const size = parseFloat(this.value);
+                    const range = getSizeRange(size);
+                    
+                    const data = statistics['維度統計']['發行規模'][range];
+                    const percentage = data['樣本比例'] || 0;
+                    
+                    document.getElementById('sizeInfo').style.display = 'block';
+                    
+                    let html = `區間：${range}<br>`;
+                    html += `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('sizeStats').innerHTML = html;
+                    
+                    // 觸發市場氛圍更新
+                    updateMarketSentimentDisplay();
+                }
+            });
+
+            // 轉換價格（新增統計提示）
+            document.getElementById('conversionPrice').addEventListener('input', function() {
+                if (this.value) {
+                    const price = parseFloat(this.value);
+                    let range = '';
+                    if (price < 20) range = '<20元';
+                    else if (price < 50) range = '20-50元';
+                    else if (price < 100) range = '50-100元';
+                    else if (price < 150) range = '100-150元';
+                    else if (price < 200) range = '150-200元';
+                    else range = '>200元';
+                    
+                    const data = statistics['維度統計']['轉換價'][range];
+                    const percentage = data['樣本比例'] || 0;
+                    
+                    document.getElementById('conversionInfo').style.display = 'block';
+                    
+                    let html = `區間：${range}<br>`;
+                    html += `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('conversionStats').innerHTML = html;
+                }
+            });
+
+            // 年期
+            document.getElementById('years').addEventListener('change', function() {
+                if (this.value) {
+                    const data = statistics['維度統計']['年期'][this.value + '年'];
+                    const percentage = data['樣本比例'] || 0;
+                    
+                    document.getElementById('yearsInfo').style.display = 'block';
+                    
+                    let html = `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('yearsStats').innerHTML = html;
+                }
+            });
+
+            // 擔保
+            document.getElementById('guarantee').addEventListener('change', function() {
+                if (this.value) {
+                    const data = statistics['維度統計']['擔保'][this.value];
+                    const percentage = data['樣本比例'] || 0;
+                    
+                    document.getElementById('guaranteeInfo').style.display = 'block';
+                    
+                    let html = `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('guaranteeStats').innerHTML = html;
+                    
+                    // 觸發市場氛圍更新
+                    updateMarketSentimentDisplay();
+                }
+            });
+
+            // 信評
+            document.getElementById('rating').addEventListener('change', function() {
+                if (this.value) {
+                    const data = statistics['維度統計']['信評'][this.value];
+                    document.getElementById('ratingInfo').style.display = 'block';
+                    document.getElementById('ratingStats').innerHTML = `
+                        歷史樣本：${data['樣本數']}檔<br>
+                        平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
+                    `;
+                }
+            });
+        }
+
+        // ==========================================
+        // 表單提交
+        // ==========================================
+        document.getElementById('evaluationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 收集表單資料
+            const formData = {
+                cbName: document.getElementById('cbName').value,
+                industry: document.getElementById('industry').value,
+                issueSize: parseFloat(document.getElementById('issueSize').value),
+                years: parseInt(document.getElementById('years').value),
+                guarantee: document.getElementById('guarantee').value,
+                rating: document.getElementById('rating').value,
+                capital: parseFloat(document.getElementById('capital').value),
+                stockPrice: parseFloat(document.getElementById('stockPrice').value),
+                conversionPrice: parseFloat(document.getElementById('conversionPrice').value)
+            };
+            
+            // 計算評估結果
+            const result = calculateEvaluation(formData);
+            
+            // 顯示結果
+            displayResult(result);
+        });
+
+        // ==========================================
+        // AI評估計算引擎（資料驅動）
+        // ==========================================
+        function calculateEvaluation(data) {
+            console.log('開始資料驅動AI評估...', data);
+            
+            // 步驟1：計算理論價格
+            const theoreticalPrice = (data.stockPrice / data.conversionPrice) * 100;
+            
+            // 步驟2：查表取得各維度溢價
+            const premiums = {};
+            
+            // 2.1 產業溢價
+            premiums.industry = statistics['維度統計']['產業'][data.industry]['平均最低溢價'];
+            
+            // 2.2 發行規模溢價
+            let sizeRange = '';
+            if (data.issueSize < 2) sizeRange = '<2億';
+            else if (data.issueSize < 5) sizeRange = '2-5億';
+            else if (data.issueSize < 10) sizeRange = '5-10億';
+            else if (data.issueSize < 15) sizeRange = '10-15億';
+            else if (data.issueSize < 20) sizeRange = '15-20億';
+            else sizeRange = '>20億';
+            premiums.size = statistics['維度統計']['發行規模'][sizeRange]['平均最低溢價'];
+            
+            // 2.3 股本溢價
+            let capitalRange = '';
+            if (data.capital < 3) capitalRange = '<3億';
+            else if (data.capital < 6) capitalRange = '3-6億';
+            else if (data.capital < 10) capitalRange = '6-10億';
+            else if (data.capital < 15) capitalRange = '10-15億';
+            else if (data.capital < 20) capitalRange = '15-20億';
+            else capitalRange = '>20億';
+            premiums.capital = statistics['維度統計']['股本'][capitalRange]['平均最低溢價'];
+            
+            // 2.4 年期溢價
+            premiums.years = statistics['維度統計']['年期'][data.years + '年']['平均最低溢價'];
+            
+            // 2.5 擔保溢價
+            premiums.guarantee = statistics['維度統計']['擔保'][data.guarantee]['平均最低溢價'];
+            
+            // 2.6 信評溢價
+            premiums.rating = statistics['維度統計']['信評'][data.rating]['平均最低溢價'];
+            
+            // 2.7 轉換價溢價
+            let convRange = '';
+            if (data.conversionPrice < 20) convRange = '<20元';
+            else if (data.conversionPrice < 50) convRange = '20-50元';
+            else if (data.conversionPrice < 100) convRange = '50-100元';
+            else if (data.conversionPrice < 150) convRange = '100-150元';
+            else if (data.conversionPrice < 200) convRange = '150-200元';
+            else convRange = '>200元';
+            premiums.conversion = statistics['維度統計']['轉換價'][convRange]['平均最低溢價'];
+            
+            // 2.8 理論價溢價（最重要！）
+            let theoRange = '';
+            if (theoreticalPrice < 85) theoRange = '<85元';
+            else if (theoreticalPrice < 90) theoRange = '85-90元';
+            else if (theoreticalPrice < 95) theoRange = '90-95元';
+            else if (theoreticalPrice < 98) theoRange = '95-98元';
+            else if (theoreticalPrice < 100) theoRange = '98-100元';
+            else if (theoreticalPrice < 102) theoRange = '100-102元';
+            else if (theoreticalPrice < 105) theoRange = '102-105元';
+            else if (theoreticalPrice < 110) theoRange = '105-110元';
+            else theoRange = '>110元';
+            premiums.theoretical = statistics['維度統計']['理論價'][theoRange]['平均最低溢價'];
+            
+            // 2.9 市場氛圍調整
+            premiums.market = statistics['市場氛圍']['近3月']['建議調整'];
+            
+            // 步驟3：加權平均計算
+            const weights = {
+                theoretical: 0.30,  // 理論價最重要
+                guarantee: 0.20,    // 擔保第二重要
+                industry: 0.15,     
+                size: 0.10,         
+                rating: 0.10,       
+                conversion: 0.08,   
+                years: 0.05,        
+                capital: 0.02       
+            };
+            
+            let comprehensivePremium = 
+                premiums.theoretical * weights.theoretical +
+                premiums.guarantee * weights.guarantee +
+                premiums.industry * weights.industry +
+                premiums.size * weights.size +
+                premiums.rating * weights.rating +
+                premiums.conversion * weights.conversion +
+                premiums.years * weights.years +
+                premiums.capital * weights.capital +
+                premiums.market;  // 市場氛圍直接加減
+            
+            // 步驟4：計算投標價格
+            const theoreticalBidPrice = theoreticalPrice * (1 + comprehensivePremium / 100);
+            
+            const bidPrices = {
+                conservative: (theoreticalBidPrice * 0.95).toFixed(2),
+                balanced: (theoreticalBidPrice * 1.00).toFixed(2),
+                aggressive: (theoreticalBidPrice * 1.05).toFixed(2)
+            };
+            
+            // 返回結果
+            return {
+                cbName: data.cbName,
+                theoreticalPrice: theoreticalPrice.toFixed(2),
+                premiums: premiums,
+                comprehensivePremium: comprehensivePremium.toFixed(2),
+                theoreticalBidPrice: theoreticalBidPrice.toFixed(2),
+                bidPrices: bidPrices,
+                inputData: data,
+                ranges: {
+                    size: sizeRange,
+                    capital: capitalRange,
+                    conversion: convRange,
+                    theoretical: theoRange
+                }
+            };
+        }
+
+        // ==========================================
+        // 顯示評估結果
+        // ==========================================
+        function displayResult(result) {
+            document.getElementById('welcomeMsg').style.display = 'none';
+            
+            const resultDiv = document.getElementById('evaluationResult');
+            resultDiv.className = 'evaluation-result active';
+            
+            resultDiv.innerHTML = `
+                <div class="result-header">
+                    <h2>${result.cbName}</h2>
+                    <div class="subtitle">資料驅動AI評估結果</div>
+                </div>
+
+                <!-- 理論價格 -->
+                <div class="detail-section">
+                    <h3>📊 理論價格計算</h3>
+                    <div style="text-align: center; padding: 30px; background: #f8f9fa; border-radius: 10px;">
+                        <div style="color: #666; margin-bottom: 10px;">理論價格 = 截標日股價 ÷ 轉換價 × 100</div>
+                        <div style="font-size: 48px; font-weight: bold; color: #667eea; margin: 20px 0;">
+                            ${result.theoreticalPrice} 元
+                        </div>
+                        <div style="color: #999;">
+                            ${result.inputData.stockPrice} ÷ ${result.inputData.conversionPrice} × 100
+                        </div>
+                        <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px;">
+                            <strong>區間：${result.ranges.theoretical}</strong><br>
+                            此區間歷史平均溢價：<strong style="color: #667eea;">${result.premiums.theoretical.toFixed(2)}%</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 溢價率分解 -->
+                <div class="detail-section">
+                    <h3>🔍 溢價率分解分析（從286檔統計）</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 15px; text-align: left; border: 1px solid #ddd;">維度</th>
+                            <th style="padding: 15px; text-align: center; border: 1px solid #ddd;">本案數值</th>
+                            <th style="padding: 15px; text-align: center; border: 1px solid #ddd;">歷史溢價</th>
+                            <th style="padding: 15px; text-align: center; border: 1px solid #ddd;">權重</th>
+                            <th style="padding: 15px; text-align: center; border: 1px solid #ddd;">加權溢價</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;"><strong>理論價位</strong></td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${result.ranges.theoretical}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; color: #667eea; font-weight: bold;">${result.premiums.theoretical.toFixed(2)}%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">30%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${(result.premiums.theoretical * 0.30).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;"><strong>擔保情況</strong></td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${result.inputData.guarantee}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; color: #667eea; font-weight: bold;">${result.premiums.guarantee.toFixed(2)}%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">20%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${(result.premiums.guarantee * 0.20).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">產業分類</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${result.inputData.industry}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; color: #667eea; font-weight: bold;">${result.premiums.industry.toFixed(2)}%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">15%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${(result.premiums.industry * 0.15).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">發行規模</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${result.ranges.size}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; color: #667eea; font-weight: bold;">${result.premiums.size.toFixed(2)}%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">10%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${(result.premiums.size * 0.10).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">信用評等</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${result.inputData.rating}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; color: #667eea; font-weight: bold;">${result.premiums.rating.toFixed(2)}%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">10%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${(result.premiums.rating * 0.10).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">轉換價格</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${result.ranges.conversion}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; color: #667eea; font-weight: bold;">${result.premiums.conversion.toFixed(2)}%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">8%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${(result.premiums.conversion * 0.08).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">發行年期</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${result.inputData.years}年</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; color: #667eea; font-weight: bold;">${result.premiums.years.toFixed(2)}%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">5%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${(result.premiums.years * 0.05).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">股本大小</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${result.ranges.capital}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; color: #667eea; font-weight: bold;">${result.premiums.capital.toFixed(2)}%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">2%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${(result.premiums.capital * 0.02).toFixed(2)}%</td>
+                        </tr>
+                        <tr style="background: #e3f2fd;">
+                            <td style="padding: 12px; border: 1px solid #ddd;"><strong>市場氛圍調整</strong></td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">近3月 ${statistics['市場氛圍']['近3月']['趨勢']}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; color: #667eea; font-weight: bold;">${result.premiums.market > 0 ? '+' : ''}${result.premiums.market.toFixed(1)}%</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">-</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${result.premiums.market > 0 ? '+' : ''}${result.premiums.market.toFixed(1)}%</td>
+                        </tr>
+                        <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <td colspan="4" style="padding: 15px; font-size: 18px; font-weight: bold; border: 1px solid #667eea; text-align: right;">綜合溢價率：</td>
+                            <td style="padding: 15px; text-align: center; font-size: 24px; font-weight: bold; border: 1px solid #667eea;">${result.comprehensivePremium}%</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- 投標價格建議 -->
+                <div class="detail-section">
+                    <h3>💡 AI投標價格建議</h3>
+                    
+                    <div style="background: #f0f4ff; padding: 20px; border-radius: 10px; margin-bottom: 25px; text-align: center;">
+                        <div style="color: #666; font-size: 14px; margin-bottom: 10px;">理論投標價</div>
+                        <div style="color: #667eea; font-size: 42px; font-weight: bold;">${result.theoreticalBidPrice} 元</div>
+                        <div style="color: #999; font-size: 13px; margin-top: 10px;">
+                            = 理論價格 ${result.theoreticalPrice} × (1 + 綜合溢價率 ${result.comprehensivePremium}%)
+                        </div>
+                    </div>
+
+                    <div class="price-grid">
+                        <div class="strategy-card conservative">
+                            <h4 style="color: #4CAF50;">🛡️ 保守策略</h4>
+                            <div class="price" style="color: #4CAF50;">${result.bidPrices.conservative} 元</div>
+                            <div style="color: #666; line-height: 1.8; font-size: 14px;">
+                                <strong>得標機率：</strong>75-90%<br>
+                                <strong>風險等級：</strong>低<br>
+                                <strong>策略說明：</strong>專注於接近最低得標價
+                            </div>
+                        </div>
+
+                        <div class="strategy-card balanced">
+                            <h4 style="color: #FF9800;">⚖️ 平衡策略</h4>
+                            <div class="price" style="color: #FF9800;">${result.bidPrices.balanced} 元</div>
+                            <div style="color: #666; line-height: 1.8; font-size: 14px;">
+                                <strong>得標機率：</strong>60-75%<br>
+                                <strong>風險等級：</strong>中<br>
+                                <strong>策略說明：</strong>平衡風險與機會
+                            </div>
+                        </div>
+
+                        <div class="strategy-card aggressive">
+                            <h4 style="color: #f44336;">🚀 積極策略</h4>
+                            <div class="price" style="color: #f44336;">${result.bidPrices.aggressive} 元</div>
+                            <div style="color: #666; line-height: 1.8; font-size: 14px;">
+                                <strong>得標機率：</strong>90%+<br>
+                                <strong>風險等級：</strong>高<br>
+                                <strong>策略說明：</strong>積極投標，確保得標
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-top: 25px; border-left: 4px solid #2196F3;">
+                        <strong style="color: #1976D2;">💭 Rex大叔提醒：</strong>
+                        <p style="color: #555; margin-top: 10px; line-height: 1.8;">
+                            以上價格基於286檔歷史案例的統計分析，僅供參考。
+                            實際投標請依個人風險承受度調整。
+                            記住：寧可不得標，也不要高價得標陷入套牢。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 重新評估按鈕 -->
+                <div style="text-align: center; margin-top: 30px;">
+                    <button onclick="resetForm()" style="padding: 15px 40px; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; font-weight: bold;">
+                        🔄 評估其他標的
+                    </button>
+                </div>
+            `;
+            
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ==========================================
+        // 重置表單
+        // ==========================================
+        function resetForm() {
+            document.getElementById('evaluationForm').reset();
+            document.getElementById('welcomeMsg').style.display = 'block';
+            document.getElementById('evaluationResult').className = 'evaluation-result';
+            
+            // 隱藏所有提示框
+            document.querySelectorAll('.info-box[id$="Info"]').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 頁面載入時執行
+        window.addEventListener('DOMContentLoaded', loadStatistics);
+        
+        console.log('AI智能可轉債競拍系統 v3.0 (資料驅動版) 已載入');
+    </script>
+</body>
+</html>
