@@ -409,7 +409,7 @@
 
                         <div class="form-group">
                             <label>股本 (億元) *</label>
-                            <input type="number" id="capital" step="0.1" required placeholder="例如：33.8">
+                            <input type="number" id="capital" step="0.01" required placeholder="例如：33.80">
                             <div id="capitalInfo" class="info-box" style="display:none;">
                                 <div class="title">📊 歷史統計</div>
                                 <div class="content" id="capitalStats"></div>
@@ -515,16 +515,16 @@
 
                     <!-- 市場氛圍（動態計算） -->
                     <div class="form-section">
-                        <h3>📊 相似標的市場氛圍</h3>
+                        <h3>📊 近期市場競拍氛圍</h3>
                         <div id="marketSentiment" class="info-box">
                             <div class="title">🌡️ 動態市場氛圍分析</div>
                             <div class="content">
-                                請先選擇：產業分類、發行規模、股本、擔保情況<br>
-                                系統將自動計算相似標的的市場氛圍
+                                請先選擇：擔保情況<br>
+                                系統將自動計算市場競拍氛圍
                             </div>
                         </div>
                         <small style="color: #999; font-size: 12px; display: block; margin-top: 10px;">
-                            💡 市場氛圍會根據您選擇的條件，分析「產業相同 + 規模相近 + 股本相近 + 擔保一致」的歷史案例
+                            💡 投標倍數：反映市場參與熱度 / 投標均張：反映主力大戶意圖
                         </small>
                     </div>
                             <div class="content">載入統計數據中...</div>
@@ -659,34 +659,18 @@
     
     <script>
         // ==========================================
-        // 計算動態市場氛圍
+        // 計算動態市場氛圍（基於投標倍數和投標均張）
         // ==========================================
-        function calculateDynamicMarketSentiment(industry, sizeRange, capitalRange, guarantee) {
-            if (!industry || !sizeRange || !capitalRange || !guarantee || !auctionRawData) {
+        function calculateDynamicMarketSentiment(guarantee) {
+            if (!guarantee || !auctionRawData) {
                 return null;
             }
             
-            // 篩選相似案例
-            const similarCases = auctionRawData.filter(item => {
-                // 產業必須相同
-                if (item['產業分類'] !== industry) return false;
-                
-                // 發行規模區間相同
-                const itemSizeRange = getSizeRange(item['發行規模']);
-                if (itemSizeRange !== sizeRange) return false;
-                
-                // 股本區間相同
-                const itemCapitalRange = getCapitalRange(item['股本']);
-                if (itemCapitalRange !== capitalRange) return false;
-                
-                // 擔保情況相同
-                if (item['擔保'] !== guarantee) return false;
-                
-                return true;
-            });
+            // 篩選相同擔保的案例
+            const similarCases = auctionRawData.filter(item => item['擔保'] === guarantee);
             
             if (similarCases.length === 0) {
-                return { error: '找不到相似案例' };
+                return { error: '找不到案例' };
             }
             
             // 計算不同時間段的市場氛圍
@@ -710,44 +694,70 @@
                 });
                 
                 if (periodCases.length > 0) {
-                    const avgPremium = periodCases.reduce((sum, item) => sum + item['最低溢價'], 0) / periodCases.length * 100;
+                    // 計算平均投標倍數
+                    const avgMultiple = periodCases.reduce((sum, item) => sum + item['投標倍數'], 0) / periodCases.length;
                     
-                    // 計算趨勢
+                    // 計算平均投標均張
+                    const avgPerBid = periodCases.reduce((sum, item) => sum + item['投標均張'], 0) / periodCases.length;
+                    
+                    // 計算趨勢（比較前後半期）
                     const sortedCases = periodCases.sort((a, b) => new Date(a['開標日期']) - new Date(b['開標日期']));
                     const midPoint = Math.floor(sortedCases.length / 2);
                     const firstHalf = sortedCases.slice(0, midPoint);
                     const secondHalf = sortedCases.slice(midPoint);
                     
-                    const firstAvg = firstHalf.length > 0 ? 
-                        firstHalf.reduce((sum, item) => sum + item['最低溢價'], 0) / firstHalf.length * 100 : 0;
-                    const secondAvg = secondHalf.length > 0 ?
-                        secondHalf.reduce((sum, item) => sum + item['最低溢價'], 0) / secondHalf.length * 100 : 0;
+                    const firstAvgMultiple = firstHalf.length > 0 ? 
+                        firstHalf.reduce((sum, item) => sum + item['投標倍數'], 0) / firstHalf.length : 0;
+                    const secondAvgMultiple = secondHalf.length > 0 ?
+                        secondHalf.reduce((sum, item) => sum + item['投標倍數'], 0) / secondHalf.length : 0;
                     
-                    const change = secondAvg - firstAvg;
+                    const change = secondAvgMultiple - firstAvgMultiple;
+                    const changePercent = firstAvgMultiple > 0 ? (change / firstAvgMultiple * 100) : 0;
                     
-                    let trend, adjustment;
-                    if (change > 2) {
+                    // 判斷趨勢
+                    let trend, trendIcon;
+                    if (changePercent > 20) {
                         trend = "強勢上升";
-                        adjustment = 0.7;
-                    } else if (change > 1) {
+                        trendIcon = "🔥";
+                    } else if (changePercent > 10) {
                         trend = "溫和上升";
-                        adjustment = 0.4;
-                    } else if (change > -1) {
+                        trendIcon = "📈";
+                    } else if (changePercent > -10) {
                         trend = "平穩";
-                        adjustment = 0.0;
-                    } else if (change > -2) {
+                        trendIcon = "➡️";
+                    } else if (changePercent > -20) {
                         trend = "溫和下降";
-                        adjustment = -0.3;
+                        trendIcon = "📉";
                     } else {
                         trend = "急劇下降";
-                        adjustment = -0.6;
+                        trendIcon = "❄️";
+                    }
+                    
+                    // 判斷市場熱度（基於投標倍數）
+                    let heatLevel, heatColor;
+                    if (avgMultiple >= 4) {
+                        heatLevel = "極熱";
+                        heatColor = "#f44336";
+                    } else if (avgMultiple >= 3) {
+                        heatLevel = "偏熱";
+                        heatColor = "#FF9800";
+                    } else if (avgMultiple >= 2) {
+                        heatLevel = "溫和";
+                        heatColor = "#4CAF50";
+                    } else {
+                        heatLevel = "冷清";
+                        heatColor = "#2196F3";
                     }
                     
                     results[label] = {
                         案例數: periodCases.length,
-                        平均溢價: avgPremium.toFixed(2),
+                        投標倍數: avgMultiple.toFixed(2),
+                        投標均張: avgPerBid.toFixed(2),
                         趨勢: trend,
-                        調整: adjustment
+                        趨勢圖標: trendIcon,
+                        變化: changePercent.toFixed(1),
+                        熱度: heatLevel,
+                        熱度顏色: heatColor
                     };
                 }
             });
@@ -757,6 +767,71 @@
                 results: results
             };
         }
+        
+        // 更新市場氛圍顯示
+        function updateMarketSentimentDisplay() {
+            const guarantee = document.getElementById('guarantee').value;
+            
+            if (!guarantee) {
+                return;  // 尚未選擇擔保情況
+            }
+            
+            const sentiment = calculateDynamicMarketSentiment(guarantee);
+            const sentimentDiv = document.getElementById('marketSentiment');
+            
+            if (!sentiment || sentiment.error) {
+                sentimentDiv.innerHTML = `
+                    <div class="title">⚠️ 近期市場競拍氛圍</div>
+                    <div class="content" style="color: #f44336;">
+                        找不到符合條件的案例
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="title">🌡️ 近期市場競拍氛圍（${guarantee} / 共${sentiment.totalCases}檔）</div>
+                <div class="content">
+            `;
+            
+            ['近1月', '近3月', '近6月', '近12月'].forEach(period => {
+                if (sentiment.results[period]) {
+                    const data = sentiment.results[period];
+                    
+                    html += `
+                        <div style="margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid ${data.熱度顏色};">
+                            <div style="font-weight: bold; margin-bottom: 8px;">
+                                ${period} ${data.趨勢圖標} ${data.趨勢} 
+                                <span style="color: ${data.熱度顏色}; font-size: 14px;">（${data.熱度}）</span>
+                            </div>
+                            <div style="font-size: 13px; line-height: 1.8; color: #666;">
+                                📊 樣本數：<strong>${data.案例數}檔</strong><br>
+                                🎯 投標倍數：<strong style="color: ${data.熱度顏色}">${data.投標倍數}倍</strong> 
+                                <span style="font-size: 12px;">(變化 ${data.變化}%)</span><br>
+                                💰 投標均張：<strong>${data.投標均張}張</strong>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            html += `
+                    <div style="margin-top: 15px; padding: 12px; background: #e3f2fd; border-radius: 8px; border-left: 3px solid #2196F3;">
+                        <div style="color: #1976D2; font-weight: bold; margin-bottom: 5px;">💡 指標說明</div>
+                        <div style="font-size: 12px; color: #555; line-height: 1.6;">
+                            <strong>投標倍數</strong>：反映市場參與熱度，越高代表競爭越激烈<br>
+                            <strong>投標均張</strong>：反映主力大戶意圖，越高代表大資金搶籌碼
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            sentimentDiv.innerHTML = html;
+        }
+
+        // ==========================================
+        // 輔助函數
+        // ==========================================
         
         // 取得發行規模區間
         function getSizeRange(size) {
@@ -776,72 +851,6 @@
             if (capital < 15) return '10-15億';
             if (capital < 20) return '15-20億';
             return '>20億';
-        }
-        
-        // 更新市場氛圍顯示
-        function updateMarketSentimentDisplay() {
-            const industry = document.getElementById('industry').value;
-            const issueSize = parseFloat(document.getElementById('issueSize').value);
-            const capital = parseFloat(document.getElementById('capital').value);
-            const guarantee = document.getElementById('guarantee').value;
-            
-            if (!industry || !issueSize || !capital || !guarantee) {
-                return;  // 尚未全部選擇，不更新
-            }
-            
-            const sizeRange = getSizeRange(issueSize);
-            const capitalRange = getCapitalRange(capital);
-            
-            const sentiment = calculateDynamicMarketSentiment(industry, sizeRange, capitalRange, guarantee);
-            const sentimentDiv = document.getElementById('marketSentiment');
-            
-            if (!sentiment || sentiment.error) {
-                sentimentDiv.innerHTML = `
-                    <div class="title">⚠️ 相似標的市場氛圍</div>
-                    <div class="content" style="color: #f44336;">
-                        找不到符合條件的相似案例<br>
-                        （產業：${industry} / 規模：${sizeRange} / 股本：${capitalRange} / 擔保：${guarantee}）
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = `
-                <div class="title">🌡️ 相似標的市場氛圍（${sentiment.totalCases}檔相似案例）</div>
-                <div class="content">
-                    <div style="color: #666; margin-bottom: 10px; font-size: 13px;">
-                        篩選條件：${industry} / ${sizeRange} / ${capitalRange} / ${guarantee}
-                    </div>
-            `;
-            
-            ['近1月', '近3月', '近6月', '近12月'].forEach(period => {
-                if (sentiment.results[period]) {
-                    const data = sentiment.results[period];
-                    let trendColor = data.趨勢.includes('上升') ? '#4CAF50' : 
-                                    data.趨勢.includes('下降') ? '#f44336' : '#FF9800';
-                    
-                    html += `
-                        <div style="margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-                            <strong>${period}</strong>：
-                            ${data.案例數}檔 / 平均溢價 <strong>${data.平均溢價}%</strong><br>
-                            趨勢：<strong style="color: ${trendColor}">${data.趨勢}</strong> 
-                            （調整：<strong>${data.調整 > 0 ? '+' : ''}${data.調整}%</strong>）
-                        </div>
-                    `;
-                }
-            });
-            
-            html += `
-                    <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 5px; border-left: 3px solid #2196F3;">
-                        <strong style="color: #1976D2;">💡 系統建議</strong><br>
-                        <span style="font-size: 13px; color: #555;">
-                            AI將採用「近3月」的氛圍調整進行計算
-                        </span>
-                    </div>
-                </div>
-            `;
-            
-            sentimentDiv.innerHTML = html;
         }
 
         // ==========================================
@@ -889,9 +898,9 @@
                     const data = statistics['維度統計']['股本'][range];
                     document.getElementById('capitalInfo').style.display = 'block';
                     document.getElementById('capitalStats').innerHTML = `
-                        區間：${range}<br>
-                        歷史樣本：${data['樣本數']}檔<br>
-                        平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
+                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
+                        平均得標：暫無資料
                     `;
                     
                     // 觸發市場氛圍更新
@@ -905,8 +914,9 @@
                     const data = statistics['維度統計']['產業'][this.value];
                     document.getElementById('industryInfo').style.display = 'block';
                     document.getElementById('industryStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔<br>
-                        平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
+                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
+                        平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%
                     `;
                     
                     // 觸發市場氛圍更新
@@ -924,8 +934,9 @@
                     document.getElementById('sizeInfo').style.display = 'block';
                     document.getElementById('sizeStats').innerHTML = `
                         區間：${range}<br>
-                        歷史樣本：${data['樣本數']}檔<br>
-                        平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
+                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
+                        平均得標：暫無資料
                     `;
                     
                     // 觸發市場氛圍更新
@@ -949,8 +960,9 @@
                     document.getElementById('conversionInfo').style.display = 'block';
                     document.getElementById('conversionStats').innerHTML = `
                         區間：${range}<br>
-                        歷史樣本：${data['樣本數']}檔<br>
-                        平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
+                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
+                        平均得標：暫無資料
                     `;
                 }
             });
@@ -961,8 +973,9 @@
                     const data = statistics['維度統計']['年期'][this.value + '年'];
                     document.getElementById('yearsInfo').style.display = 'block';
                     document.getElementById('yearsStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔<br>
-                        平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
+                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
+                        平均得標：暫無資料
                     `;
                 }
             });
@@ -973,8 +986,9 @@
                     const data = statistics['維度統計']['擔保'][this.value];
                     document.getElementById('guaranteeInfo').style.display = 'block';
                     document.getElementById('guaranteeStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔<br>
-                        平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
+                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
+                        平均得標：暫無資料
                     `;
                     
                     // 觸發市場氛圍更新
@@ -1343,3 +1357,17 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
