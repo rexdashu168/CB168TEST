@@ -408,6 +408,15 @@
                         </div>
 
                         <div class="form-group">
+                            <label>股本 (億元) *</label>
+                            <input type="number" id="capital" step="0.1" required placeholder="例如：33.8">
+                            <div id="capitalInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 歷史統計</div>
+                                <div class="content" id="capitalStats"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
                             <label>產業分類 *</label>
                             <select id="industry" required>
                                 <option value="">請選擇...</option>
@@ -416,6 +425,14 @@
                                 <div class="title">📊 歷史統計</div>
                                 <div class="content" id="industryStats"></div>
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>發行券商</label>
+                            <select id="broker">
+                                <option value="">請選擇...</option>
+                            </select>
+                            <small>選填項目</small>
                         </div>
                     </div>
 
@@ -429,6 +446,15 @@
                             <div id="sizeInfo" class="info-box" style="display:none;">
                                 <div class="title">📊 歷史統計</div>
                                 <div class="content" id="sizeStats"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>轉換價格 (元) *</label>
+                            <input type="number" id="conversionPrice" step="0.01" required placeholder="例如：490.7">
+                            <div id="conversionInfo" class="info-box" style="display:none;">
+                                <div class="title">📊 歷史統計</div>
+                                <div class="content" id="conversionStats"></div>
                             </div>
                         </div>
 
@@ -476,31 +502,31 @@
                         </div>
                     </div>
 
-                    <!-- 公司資料 -->
+                    <!-- 競拍資料 -->
                     <div class="form-section">
-                        <h3>🏢 公司資料</h3>
+                        <h3>🎯 競拍資料</h3>
                         
                         <div class="form-group">
-                            <label>股本 (億元) *</label>
-                            <input type="number" id="capital" step="0.1" required placeholder="例如：33.8">
-                        </div>
-
-                        <div class="form-group">
-                            <label>截標日收盤價 (元) *</label>
+                            <label>競拍截止日1:30收盤價格 (元) *</label>
                             <input type="number" id="stockPrice" step="0.01" required placeholder="例如：461.5">
-                        </div>
-
-                        <div class="form-group">
-                            <label>轉換價格 (元) *</label>
-                            <input type="number" id="conversionPrice" step="0.01" required placeholder="例如：490.7">
+                            <small>請填入競拍截止當日下午1:30的收盤價格</small>
                         </div>
                     </div>
 
-                    <!-- 市場氛圍（自動顯示） -->
+                    <!-- 市場氛圍（動態計算） -->
                     <div class="form-section">
-                        <h3>📊 市場氛圍（系統自動）</h3>
+                        <h3>📊 相似標的市場氛圍</h3>
                         <div id="marketSentiment" class="info-box">
-                            <div class="title">🌡️ 最新市場狀況</div>
+                            <div class="title">🌡️ 動態市場氛圍分析</div>
+                            <div class="content">
+                                請先選擇：產業分類、發行規模、股本、擔保情況<br>
+                                系統將自動計算相似標的的市場氛圍
+                            </div>
+                        </div>
+                        <small style="color: #999; font-size: 12px; display: block; margin-top: 10px;">
+                            💡 市場氛圍會根據您選擇的條件，分析「產業相同 + 規模相近 + 股本相近 + 擔保一致」的歷史案例
+                        </small>
+                    </div>
                             <div class="content">載入統計數據中...</div>
                         </div>
                     </div>
@@ -535,6 +561,7 @@
         // 全域變數
         let statistics = null;
         let cbDatabase = null;
+        let auctionRawData = null;  // 競拍原始資料（用於動態計算市場氛圍）
 
         // ==========================================
         // 載入統計數據
@@ -546,9 +573,11 @@
                 
                 statistics = data['統計數據'];
                 cbDatabase = data['CB資料庫'];
+                auctionRawData = data['競拍原始資料'];
                 
                 console.log('✅ 統計數據載入成功', statistics);
                 console.log('✅ CB資料庫載入成功，共', Object.keys(cbDatabase).length, '檔');
+                console.log('✅ 競拍原始資料載入成功，共', auctionRawData.length, '筆');
                 
                 // 初始化介面
                 initializeUI();
@@ -574,11 +603,24 @@
                 industrySelect.appendChild(option);
             });
 
+            // 填入發行券商選項
+            const brokerSelect = document.getElementById('broker');
+            const brokers = [
+                '統一證券', '第一金證', '國票證券', '富邦證券', '永豐金證',
+                '凱基證券', '中信證券', '台新證券', '兆豐證券', '福邦證券',
+                '群益證券', '台中銀證', '元大證券', '元富證券', '國泰證券',
+                '華南永昌', '合庫證券', '宏遠證券', '康和證券', '永豐證券', '玉山證券'
+            ];
+            
+            brokers.forEach(broker => {
+                const option = document.createElement('option');
+                option.value = broker;
+                option.textContent = broker;
+                brokerSelect.appendChild(option);
+            });
+
             // 顯示統計摘要
             showStatsSummary();
-            
-            // 顯示市場氛圍
-            showMarketSentiment();
             
             // 綁定選擇事件（顯示歷史統計）
             bindInputEvents();
@@ -617,30 +659,189 @@
     
     <script>
         // ==========================================
-        // 顯示市場氛圍
+        // 計算動態市場氛圍
         // ==========================================
-        function showMarketSentiment() {
-            const sentiment = statistics['市場氛圍']['近3月'];
-            const sentimentDiv = document.getElementById('marketSentiment');
-            
-            let trendColor = '';
-            if (sentiment['趨勢'].includes('上升')) {
-                trendColor = '#4CAF50';
-            } else if (sentiment['趨勢'].includes('下降')) {
-                trendColor = '#f44336';
-            } else {
-                trendColor = '#FF9800';
+        function calculateDynamicMarketSentiment(industry, sizeRange, capitalRange, guarantee) {
+            if (!industry || !sizeRange || !capitalRange || !guarantee || !auctionRawData) {
+                return null;
             }
             
-            sentimentDiv.innerHTML = `
-                <div class="title">🌡️ 最新市場狀況（近3月）</div>
+            // 篩選相似案例
+            const similarCases = auctionRawData.filter(item => {
+                // 產業必須相同
+                if (item['產業分類'] !== industry) return false;
+                
+                // 發行規模區間相同
+                const itemSizeRange = getSizeRange(item['發行規模']);
+                if (itemSizeRange !== sizeRange) return false;
+                
+                // 股本區間相同
+                const itemCapitalRange = getCapitalRange(item['股本']);
+                if (itemCapitalRange !== capitalRange) return false;
+                
+                // 擔保情況相同
+                if (item['擔保'] !== guarantee) return false;
+                
+                return true;
+            });
+            
+            if (similarCases.length === 0) {
+                return { error: '找不到相似案例' };
+            }
+            
+            // 計算不同時間段的市場氛圍
+            const today = new Date();
+            const periods = [
+                { days: 30, label: '近1月' },
+                { days: 90, label: '近3月' },
+                { days: 180, label: '近6月' },
+                { days: 365, label: '近12月' }
+            ];
+            
+            const results = {};
+            
+            periods.forEach(({ days, label }) => {
+                const cutoffDate = new Date(today);
+                cutoffDate.setDate(cutoffDate.getDate() - days);
+                
+                const periodCases = similarCases.filter(item => {
+                    const itemDate = new Date(item['開標日期']);
+                    return itemDate >= cutoffDate;
+                });
+                
+                if (periodCases.length > 0) {
+                    const avgPremium = periodCases.reduce((sum, item) => sum + item['最低溢價'], 0) / periodCases.length * 100;
+                    
+                    // 計算趨勢
+                    const sortedCases = periodCases.sort((a, b) => new Date(a['開標日期']) - new Date(b['開標日期']));
+                    const midPoint = Math.floor(sortedCases.length / 2);
+                    const firstHalf = sortedCases.slice(0, midPoint);
+                    const secondHalf = sortedCases.slice(midPoint);
+                    
+                    const firstAvg = firstHalf.length > 0 ? 
+                        firstHalf.reduce((sum, item) => sum + item['最低溢價'], 0) / firstHalf.length * 100 : 0;
+                    const secondAvg = secondHalf.length > 0 ?
+                        secondHalf.reduce((sum, item) => sum + item['最低溢價'], 0) / secondHalf.length * 100 : 0;
+                    
+                    const change = secondAvg - firstAvg;
+                    
+                    let trend, adjustment;
+                    if (change > 2) {
+                        trend = "強勢上升";
+                        adjustment = 0.7;
+                    } else if (change > 1) {
+                        trend = "溫和上升";
+                        adjustment = 0.4;
+                    } else if (change > -1) {
+                        trend = "平穩";
+                        adjustment = 0.0;
+                    } else if (change > -2) {
+                        trend = "溫和下降";
+                        adjustment = -0.3;
+                    } else {
+                        trend = "急劇下降";
+                        adjustment = -0.6;
+                    }
+                    
+                    results[label] = {
+                        案例數: periodCases.length,
+                        平均溢價: avgPremium.toFixed(2),
+                        趨勢: trend,
+                        調整: adjustment
+                    };
+                }
+            });
+            
+            return { 
+                totalCases: similarCases.length,
+                results: results
+            };
+        }
+        
+        // 取得發行規模區間
+        function getSizeRange(size) {
+            if (size < 2) return '<2億';
+            if (size < 5) return '2-5億';
+            if (size < 10) return '5-10億';
+            if (size < 15) return '10-15億';
+            if (size < 20) return '15-20億';
+            return '>20億';
+        }
+        
+        // 取得股本區間
+        function getCapitalRange(capital) {
+            if (capital < 3) return '<3億';
+            if (capital < 6) return '3-6億';
+            if (capital < 10) return '6-10億';
+            if (capital < 15) return '10-15億';
+            if (capital < 20) return '15-20億';
+            return '>20億';
+        }
+        
+        // 更新市場氛圍顯示
+        function updateMarketSentimentDisplay() {
+            const industry = document.getElementById('industry').value;
+            const issueSize = parseFloat(document.getElementById('issueSize').value);
+            const capital = parseFloat(document.getElementById('capital').value);
+            const guarantee = document.getElementById('guarantee').value;
+            
+            if (!industry || !issueSize || !capital || !guarantee) {
+                return;  // 尚未全部選擇，不更新
+            }
+            
+            const sizeRange = getSizeRange(issueSize);
+            const capitalRange = getCapitalRange(capital);
+            
+            const sentiment = calculateDynamicMarketSentiment(industry, sizeRange, capitalRange, guarantee);
+            const sentimentDiv = document.getElementById('marketSentiment');
+            
+            if (!sentiment || sentiment.error) {
+                sentimentDiv.innerHTML = `
+                    <div class="title">⚠️ 相似標的市場氛圍</div>
+                    <div class="content" style="color: #f44336;">
+                        找不到符合條件的相似案例<br>
+                        （產業：${industry} / 規模：${sizeRange} / 股本：${capitalRange} / 擔保：${guarantee}）
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="title">🌡️ 相似標的市場氛圍（${sentiment.totalCases}檔相似案例）</div>
                 <div class="content">
-                    案例數：<strong>${sentiment['案例數']}檔</strong><br>
-                    平均溢價：<strong>${sentiment['平均最低溢價']}%</strong><br>
-                    趨勢：<strong style="color: ${trendColor}">${sentiment['趨勢']}</strong><br>
-                    系統將自動調整：<strong>${sentiment['建議調整'] > 0 ? '+' : ''}${sentiment['建議調整']}%</strong>
+                    <div style="color: #666; margin-bottom: 10px; font-size: 13px;">
+                        篩選條件：${industry} / ${sizeRange} / ${capitalRange} / ${guarantee}
+                    </div>
+            `;
+            
+            ['近1月', '近3月', '近6月', '近12月'].forEach(period => {
+                if (sentiment.results[period]) {
+                    const data = sentiment.results[period];
+                    let trendColor = data.趨勢.includes('上升') ? '#4CAF50' : 
+                                    data.趨勢.includes('下降') ? '#f44336' : '#FF9800';
+                    
+                    html += `
+                        <div style="margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                            <strong>${period}</strong>：
+                            ${data.案例數}檔 / 平均溢價 <strong>${data.平均溢價}%</strong><br>
+                            趨勢：<strong style="color: ${trendColor}">${data.趨勢}</strong> 
+                            （調整：<strong>${data.調整 > 0 ? '+' : ''}${data.調整}%</strong>）
+                        </div>
+                    `;
+                }
+            });
+            
+            html += `
+                    <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 5px; border-left: 3px solid #2196F3;">
+                        <strong style="color: #1976D2;">💡 系統建議</strong><br>
+                        <span style="font-size: 13px; color: #555;">
+                            AI將採用「近3月」的氛圍調整進行計算
+                        </span>
+                    </div>
                 </div>
             `;
+            
+            sentimentDiv.innerHTML = html;
         }
 
         // ==========================================
@@ -679,6 +880,25 @@
                 }
             });
 
+            // 股本輸入（新增統計提示）
+            document.getElementById('capital').addEventListener('input', function() {
+                if (this.value) {
+                    const capital = parseFloat(this.value);
+                    const range = getCapitalRange(capital);
+                    
+                    const data = statistics['維度統計']['股本'][range];
+                    document.getElementById('capitalInfo').style.display = 'block';
+                    document.getElementById('capitalStats').innerHTML = `
+                        區間：${range}<br>
+                        歷史樣本：${data['樣本數']}檔<br>
+                        平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
+                    `;
+                    
+                    // 觸發市場氛圍更新
+                    updateMarketSentimentDisplay();
+                }
+            });
+
             // 產業選擇
             document.getElementById('industry').addEventListener('change', function() {
                 if (this.value) {
@@ -688,6 +908,9 @@
                         歷史樣本：${data['樣本數']}檔<br>
                         平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
                     `;
+                    
+                    // 觸發市場氛圍更新
+                    updateMarketSentimentDisplay();
                 }
             });
 
@@ -695,17 +918,36 @@
             document.getElementById('issueSize').addEventListener('input', function() {
                 if (this.value) {
                     const size = parseFloat(this.value);
-                    let range = '';
-                    if (size < 2) range = '<2億';
-                    else if (size < 5) range = '2-5億';
-                    else if (size < 10) range = '5-10億';
-                    else if (size < 15) range = '10-15億';
-                    else if (size < 20) range = '15-20億';
-                    else range = '>20億';
+                    const range = getSizeRange(size);
                     
                     const data = statistics['維度統計']['發行規模'][range];
                     document.getElementById('sizeInfo').style.display = 'block';
                     document.getElementById('sizeStats').innerHTML = `
+                        區間：${range}<br>
+                        歷史樣本：${data['樣本數']}檔<br>
+                        平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
+                    `;
+                    
+                    // 觸發市場氛圍更新
+                    updateMarketSentimentDisplay();
+                }
+            });
+
+            // 轉換價格（新增統計提示）
+            document.getElementById('conversionPrice').addEventListener('input', function() {
+                if (this.value) {
+                    const price = parseFloat(this.value);
+                    let range = '';
+                    if (price < 20) range = '<20元';
+                    else if (price < 50) range = '20-50元';
+                    else if (price < 100) range = '50-100元';
+                    else if (price < 150) range = '100-150元';
+                    else if (price < 200) range = '150-200元';
+                    else range = '>200元';
+                    
+                    const data = statistics['維度統計']['轉換價'][range];
+                    document.getElementById('conversionInfo').style.display = 'block';
+                    document.getElementById('conversionStats').innerHTML = `
                         區間：${range}<br>
                         歷史樣本：${data['樣本數']}檔<br>
                         平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
@@ -734,6 +976,9 @@
                         歷史樣本：${data['樣本數']}檔<br>
                         平均最低溢價：<strong>${data['平均最低溢價']}%</strong>
                     `;
+                    
+                    // 觸發市場氛圍更新
+                    updateMarketSentimentDisplay();
                 }
             });
 
