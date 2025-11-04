@@ -678,27 +678,102 @@
             document.getElementById('headerSubtitle').textContent = 
                 `Rex大叔的168台股投資教室 | 整合${totalCB.toLocaleString()}檔CB完整資料與${totalAuction}檔競拍統計`;
             
-            // 填入產業選項
+            // 填入產業選項（按平均掛牌最高排序，樣本數>=10優先）
             const industrySelect = document.getElementById('industry');
-            const industries = Object.keys(statistics['維度統計']['產業']).sort();
+            const industryData = statistics['維度統計']['產業'];
             
-            industries.forEach(industry => {
+            // 分類：有掛牌資料且樣本數>=10的產業 vs 其他產業
+            const qualifiedIndustries = [];
+            const otherIndustries = [];
+            
+            Object.keys(industryData).forEach(industry => {
+                const data = industryData[industry];
+                if (data['樣本數'] >= 10 && data['平均掛牌最高']) {
+                    qualifiedIndustries.push({
+                        name: industry,
+                        avgHigh: data['平均掛牌最高'],
+                        samples: data['樣本數']
+                    });
+                } else {
+                    otherIndustries.push(industry);
+                }
+            });
+            
+            // 符合條件的按掛牌最高排序（高到低）
+            qualifiedIndustries.sort((a, b) => b.avgHigh - a.avgHigh);
+            
+            // 其他的按字母排序
+            otherIndustries.sort();
+            
+            // 先加入符合條件的（附加統計資訊）
+            qualifiedIndustries.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.name;
+                option.textContent = `${item.name} (掛牌最高 ${item.avgHigh}元)`;
+                industrySelect.appendChild(option);
+            });
+            
+            // 如果有其他產業，加入分隔線
+            if (otherIndustries.length > 0 && qualifiedIndustries.length > 0) {
+                const separator = document.createElement('option');
+                separator.disabled = true;
+                separator.textContent = '────── 其他產業 ──────';
+                industrySelect.appendChild(separator);
+            }
+            
+            // 再加入其他產業
+            otherIndustries.forEach(industry => {
                 const option = document.createElement('option');
                 option.value = industry;
                 option.textContent = industry;
                 industrySelect.appendChild(option);
             });
 
-            // 填入發行券商選項
+            // 填入發行券商選項（按平均掛牌最高排序，樣本數>=10優先）
             const brokerSelect = document.getElementById('broker');
-            const brokers = [
-                '統一證券', '第一金證', '國票證券', '富邦證券', '永豐金證',
-                '凱基證券', '中信證券', '台新證券', '兆豐證券', '福邦證券',
-                '群益證券', '台中銀證', '元大證券', '元富證券', '國泰證券',
-                '華南永昌', '合庫證券', '宏遠證券', '康和證券', '永豐證券', '玉山證券'
-            ];
+            const brokerData = statistics['維度統計']['發行券商'];
             
-            brokers.forEach(broker => {
+            // 分類：樣本數>=10的券商 vs 其他券商
+            const qualifiedBrokers = [];
+            const otherBrokers = [];
+            
+            Object.keys(brokerData).forEach(broker => {
+                const data = brokerData[broker];
+                if (data['樣本數'] >= 10 && data['平均掛牌最高']) {
+                    qualifiedBrokers.push({
+                        name: broker,
+                        avgHigh: data['平均掛牌最高'],
+                        samples: data['樣本數']
+                    });
+                } else {
+                    otherBrokers.push(broker);
+                }
+            });
+            
+            // 符合條件的按掛牌最高排序（高到低）
+            qualifiedBrokers.sort((a, b) => b.avgHigh - a.avgHigh);
+            
+            // 其他的按字母排序
+            otherBrokers.sort();
+            
+            // 先加入符合條件的（附加統計資訊）
+            qualifiedBrokers.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.name;
+                option.textContent = `${item.name} (掛牌最高 ${item.avgHigh}元)`;
+                brokerSelect.appendChild(option);
+            });
+            
+            // 如果有其他券商，加入分隔線
+            if (otherBrokers.length > 0 && qualifiedBrokers.length > 0) {
+                const separator = document.createElement('option');
+                separator.disabled = true;
+                separator.textContent = '────── 其他券商 ──────';
+                brokerSelect.appendChild(separator);
+            }
+            
+            // 再加入其他券商
+            otherBrokers.forEach(broker => {
                 const option = document.createElement('option');
                 option.value = broker;
                 option.textContent = broker;
@@ -1192,9 +1267,18 @@
                     html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
                     
                     if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
-                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%<br>`;
                     } else {
-                        html += `平均得標：暫無資料`;
+                        html += `平均得標：暫無資料<br>`;
+                    }
+                    
+                    // 加入掛牌價格參考（項目15）
+                    if (data['平均掛牌最高'] && data['平均掛牌最低']) {
+                        html += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">`;
+                        html += `<strong style="color: #667eea;">📈 掛牌價格參考</strong><br>`;
+                        html += `平均掛牌最高：<strong style="color: #f44336">${data['平均掛牌最高']}元</strong><br>`;
+                        html += `平均掛牌最低：<strong style="color: #4CAF50">${data['平均掛牌最低']}元</strong>`;
+                        html += `</div>`;
                     }
                     
                     document.getElementById('industryStats').innerHTML = html;
@@ -1219,12 +1303,14 @@
                     infoDiv.className = 'info-box';
                     infoDiv.style.marginTop = '10px';
                     
-                    const percentage = ((data['樣本數'] / 286) * 100).toFixed(2);
+                    // 動態計算百分比（項目17）
+                    const totalCases = statistics['資料期間']['總筆數'];
+                    const percentage = ((data['樣本數'] / totalCases) * 100).toFixed(2);
                     
                     infoDiv.innerHTML = `
                         <div class="title">📊 歷史統計</div>
                         <div class="content">
-                            歷史樣本：${data['樣本數']}檔 (${percentage}%)<br>
+                            歷史樣本：<strong>${data['樣本數']}檔</strong> (${percentage}%)<br>
                             平均掛牌最高：<strong style="color: #f44336">${data['平均掛牌最高']}元</strong><br>
                             平均掛牌最低：<strong style="color: #4CAF50">${data['平均掛牌最低']}元</strong>
                         </div>
@@ -1372,24 +1458,63 @@
         document.getElementById('evaluationForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // 收集表單資料
-            const formData = {
-                cbName: document.getElementById('cbName').value,
-                industry: document.getElementById('industry').value,
-                issueSize: parseFloat(document.getElementById('issueSize').value),
-                years: parseInt(document.getElementById('years').value),
-                guarantee: document.getElementById('guarantee').value,
-                rating: document.getElementById('rating').value,
-                capital: parseFloat(document.getElementById('capital').value),
-                stockPrice: parseFloat(document.getElementById('stockPrice').value),
-                conversionPrice: parseFloat(document.getElementById('conversionPrice').value)
-            };
+            console.log('🔹 表單提交事件觸發');
             
-            // 計算評估結果
-            const result = calculateEvaluation(formData);
+            // 檢查statistics是否已載入
+            if (!statistics) {
+                alert('統計數據尚未載入完成，請稍候再試');
+                console.error('❌ statistics未載入');
+                return;
+            }
             
-            // 顯示結果
-            displayResult(result);
+            console.log('✅ statistics已載入');
+            
+            try {
+                // 收集表單資料
+                const formData = {
+                    cbName: document.getElementById('cbName').value,
+                    industry: document.getElementById('industry').value,
+                    issueSize: parseFloat(document.getElementById('issueSize').value),
+                    years: parseInt(document.getElementById('years').value),
+                    guarantee: document.getElementById('guarantee').value,
+                    rating: document.getElementById('rating').value,
+                    capital: parseFloat(document.getElementById('capital').value),
+                    stockPrice: parseFloat(document.getElementById('stockPrice').value),
+                    conversionPrice: parseFloat(document.getElementById('conversionPrice').value)
+                };
+                
+                console.log('📋 收集的表單資料:', formData);
+                
+                // 驗證必填欄位
+                if (!formData.industry) {
+                    alert('請選擇產業分類');
+                    return;
+                }
+                if (!formData.guarantee) {
+                    alert('請選擇擔保情況');
+                    return;
+                }
+                if (!formData.rating) {
+                    alert('請選擇信用評等');
+                    return;
+                }
+                
+                console.log('✅ 欄位驗證通過');
+                
+                // 計算評估結果
+                console.log('🔹 開始計算評估...');
+                const result = calculateEvaluation(formData);
+                console.log('✅ 評估計算完成:', result);
+                
+                // 顯示結果
+                console.log('🔹 開始顯示結果...');
+                displayResult(result);
+                console.log('✅ 結果顯示完成');
+                
+            } catch (error) {
+                console.error('❌ 處理過程發生錯誤:', error);
+                alert('處理過程發生錯誤：' + error.message + '\n\n請檢查瀏覽器控制台查看詳細錯誤訊息');
+            }
         });
 
         // ==========================================
@@ -1714,3 +1839,17 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
