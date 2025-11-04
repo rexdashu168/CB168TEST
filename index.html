@@ -920,11 +920,13 @@
                     const range = getCapitalRange(capital);
                     
                     const data = statistics['維度統計']['股本'][range];
+                    const percentage = data['樣本比例'] || 0;
+                    
                     document.getElementById('capitalInfo').style.display = 'block';
                     document.getElementById('capitalStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
                         最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        平均得標：暫無資料
+                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
                     `;
                     
                     // 觸發市場氛圍更新
@@ -936,15 +938,46 @@
             document.getElementById('industry').addEventListener('change', function() {
                 if (this.value) {
                     const data = statistics['維度統計']['產業'][this.value];
+                    const percentage = data['樣本比例'] || 0;
+                    
                     document.getElementById('industryInfo').style.display = 'block';
                     document.getElementById('industryStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
                         最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%
+                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
                     `;
                     
                     // 觸發市場氛圍更新
                     updateMarketSentimentDisplay();
+                }
+            });
+
+            // 發行券商選擇（新增統計提示）
+            document.getElementById('broker').addEventListener('change', function() {
+                if (this.value) {
+                    const data = statistics['維度統計']['發行券商'][this.value];
+                    const infoDiv = document.createElement('div');
+                    infoDiv.id = 'brokerInfo';
+                    infoDiv.className = 'info-box';
+                    infoDiv.style.marginTop = '10px';
+                    infoDiv.innerHTML = `
+                        <div class="title">📊 歷史統計</div>
+                        <div class="content">
+                            歷史樣本：${data['樣本數']}檔<br>
+                            平均掛牌最高：<strong style="color: #f44336">${data['平均掛牌最高']}元</strong><br>
+                            平均掛牌最低：<strong style="color: #4CAF50">${data['平均掛牌最低']}元</strong>
+                        </div>
+                    `;
+                    
+                    // 移除舊的資訊框
+                    const oldInfo = document.getElementById('brokerInfo');
+                    if (oldInfo) oldInfo.remove();
+                    
+                    // 插入新的資訊框
+                    this.parentElement.appendChild(infoDiv);
+                } else {
+                    const oldInfo = document.getElementById('brokerInfo');
+                    if (oldInfo) oldInfo.remove();
                 }
             });
 
@@ -955,12 +988,14 @@
                     const range = getSizeRange(size);
                     
                     const data = statistics['維度統計']['發行規模'][range];
+                    const percentage = data['樣本比例'] || 0;
+                    
                     document.getElementById('sizeInfo').style.display = 'block';
                     document.getElementById('sizeStats').innerHTML = `
                         區間：${range}<br>
-                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
                         最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        平均得標：暫無資料
+                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
                     `;
                     
                     // 觸發市場氛圍更新
@@ -981,12 +1016,14 @@
                     else range = '>200元';
                     
                     const data = statistics['維度統計']['轉換價'][range];
+                    const percentage = data['樣本比例'] || 0;
+                    
                     document.getElementById('conversionInfo').style.display = 'block';
                     document.getElementById('conversionStats').innerHTML = `
                         區間：${range}<br>
-                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
                         最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        平均得標：暫無資料
+                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
                     `;
                 }
             });
@@ -995,11 +1032,13 @@
             document.getElementById('years').addEventListener('change', function() {
                 if (this.value) {
                     const data = statistics['維度統計']['年期'][this.value + '年'];
+                    const percentage = data['樣本比例'] || 0;
+                    
                     document.getElementById('yearsInfo').style.display = 'block';
                     document.getElementById('yearsStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
                         最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        平均得標：暫無資料
+                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
                     `;
                 }
             });
@@ -1008,11 +1047,13 @@
             document.getElementById('guarantee').addEventListener('change', function() {
                 if (this.value) {
                     const data = statistics['維度統計']['擔保'][this.value];
+                    const percentage = data['樣本比例'] || 0;
+                    
                     document.getElementById('guaranteeInfo').style.display = 'block';
                     document.getElementById('guaranteeStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔 (${data['樣本比例']}%)<br>
+                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
                         最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        平均得標：暫無資料
+                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
                     `;
                     
                     // 觸發市場氛圍更新
@@ -1381,17 +1422,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
