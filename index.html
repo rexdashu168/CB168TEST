@@ -381,8 +381,8 @@
                 <span class="version-badge">v3.0</span>
                 <span class="data-badge">Excel完整資料庫</span>
             </h1>
-            <p class="subtitle">
-                Rex大叔的168台股投資教室 | 整合2,232檔CB完整資料與286檔競拍統計
+            <p class="subtitle" id="headerSubtitle">
+                Rex大叔的168台股投資教室 | 載入中...
             </p>
         </div>
 
@@ -643,6 +643,12 @@
         // 初始化介面
         // ==========================================
         function initializeUI() {
+            // 更新標題統計資訊
+            const totalCB = Object.keys(cbDatabase).length;
+            const totalAuction = statistics['資料期間']['總筆數'];
+            document.getElementById('headerSubtitle').textContent = 
+                `Rex大叔的168台股投資教室 | 整合${totalCB.toLocaleString()}檔CB完整資料與${totalAuction}檔競拍統計`;
+            
             // 填入產業選項
             const industrySelect = document.getElementById('industry');
             const industries = Object.keys(statistics['維度統計']['產業']).sort();
@@ -1504,3 +1510,17 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
