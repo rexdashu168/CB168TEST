@@ -701,22 +701,28 @@
                     const avgPerBid = periodCases.reduce((sum, item) => sum + item['投標均張'], 0) / periodCases.length;
                     
                     // 計算趨勢（比較前後半期）
-                    const sortedCases = periodCases.sort((a, b) => new Date(a['開標日期']) - new Date(b['開標日期']));
-                    const midPoint = Math.floor(sortedCases.length / 2);
-                    const firstHalf = sortedCases.slice(0, midPoint);
-                    const secondHalf = sortedCases.slice(midPoint);
-                    
-                    const firstAvgMultiple = firstHalf.length > 0 ? 
-                        firstHalf.reduce((sum, item) => sum + item['投標倍數'], 0) / firstHalf.length : 0;
-                    const secondAvgMultiple = secondHalf.length > 0 ?
-                        secondHalf.reduce((sum, item) => sum + item['投標倍數'], 0) / secondHalf.length : 0;
-                    
-                    const change = secondAvgMultiple - firstAvgMultiple;
-                    const changePercent = firstAvgMultiple > 0 ? (change / firstAvgMultiple * 100) : 0;
+                    let changePercent = 0;
+                    if (periodCases.length >= 4) {
+                        const sortedCases = periodCases.sort((a, b) => new Date(a['開標日期']) - new Date(b['開標日期']));
+                        const midPoint = Math.floor(sortedCases.length / 2);
+                        const firstHalf = sortedCases.slice(0, midPoint);
+                        const secondHalf = sortedCases.slice(midPoint);
+                        
+                        const firstAvgMultiple = firstHalf.length > 0 ? 
+                            firstHalf.reduce((sum, item) => sum + item['投標倍數'], 0) / firstHalf.length : 0;
+                        const secondAvgMultiple = secondHalf.length > 0 ?
+                            secondHalf.reduce((sum, item) => sum + item['投標倍數'], 0) / secondHalf.length : 0;
+                        
+                        const change = secondAvgMultiple - firstAvgMultiple;
+                        changePercent = firstAvgMultiple > 0 ? (change / firstAvgMultiple * 100) : 0;
+                    }
                     
                     // 判斷趨勢
                     let trend, trendIcon;
-                    if (changePercent > 20) {
+                    if (periodCases.length < 4) {
+                        trend = "樣本不足";
+                        trendIcon = "⚠️";
+                    } else if (changePercent > 20) {
                         trend = "強勢上升";
                         trendIcon = "🔥";
                     } else if (changePercent > 10) {
@@ -757,7 +763,8 @@
                         趨勢圖標: trendIcon,
                         變化: changePercent.toFixed(1),
                         熱度: heatLevel,
-                        熱度顏色: heatColor
+                        熱度顏色: heatColor,
+                        樣本充足: periodCases.length >= 4
                     };
                 }
             });
@@ -798,20 +805,36 @@
                 if (sentiment.results[period]) {
                     const data = sentiment.results[period];
                     
-                    html += `
-                        <div style="margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid ${data.熱度顏色};">
-                            <div style="font-weight: bold; margin-bottom: 8px;">
-                                ${period} ${data.趨勢圖標} ${data.趨勢} 
-                                <span style="color: ${data.熱度顏色}; font-size: 14px;">（${data.熱度}）</span>
+                    // 如果樣本不足，顯示警告
+                    if (!data.樣本充足) {
+                        html += `
+                            <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                <div style="font-weight: bold; margin-bottom: 8px; color: #856404;">
+                                    ${period} ⚠️ 樣本不足
+                                </div>
+                                <div style="font-size: 13px; line-height: 1.8; color: #856404;">
+                                    📊 樣本數：<strong>${data.案例數}檔</strong> (樣本數 < 4，趨勢參考價值低)<br>
+                                    🎯 投標倍數：<strong>${data.投標倍數}倍</strong><br>
+                                    💰 投標均張：<strong>${data.投標均張}張</strong>
+                                </div>
                             </div>
-                            <div style="font-size: 13px; line-height: 1.8; color: #666;">
-                                📊 樣本數：<strong>${data.案例數}檔</strong><br>
-                                🎯 投標倍數：<strong style="color: ${data.熱度顏色}">${data.投標倍數}倍</strong> 
-                                <span style="font-size: 12px;">(變化 ${data.變化}%)</span><br>
-                                💰 投標均張：<strong>${data.投標均張}張</strong>
+                        `;
+                    } else {
+                        html += `
+                            <div style="margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid ${data.熱度顏色};">
+                                <div style="font-weight: bold; margin-bottom: 8px;">
+                                    ${period} ${data.趨勢圖標} ${data.趨勢} 
+                                    <span style="color: ${data.熱度顏色}; font-size: 14px;">（${data.熱度}）</span>
+                                </div>
+                                <div style="font-size: 13px; line-height: 1.8; color: #666;">
+                                    📊 樣本數：<strong>${data.案例數}檔</strong><br>
+                                    🎯 投標倍數：<strong style="color: ${data.熱度顏色}">${data.投標倍數}倍</strong> 
+                                    <span style="font-size: 12px;">(變化 ${data.變化}%)</span><br>
+                                    💰 投標均張：<strong>${data.投標均張}張</strong>
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    }
                 }
             });
             
@@ -820,7 +843,8 @@
                         <div style="color: #1976D2; font-weight: bold; margin-bottom: 5px;">💡 指標說明</div>
                         <div style="font-size: 12px; color: #555; line-height: 1.6;">
                             <strong>投標倍數</strong>：反映市場參與熱度，越高代表競爭越激烈<br>
-                            <strong>投標均張</strong>：反映主力大戶意圖，越高代表大資金搶籌碼
+                            <strong>投標均張</strong>：反映主力大戶意圖，越高代表大資金搶籌碼<br>
+                            <strong>樣本充足</strong>：至少需要4檔案例才能可靠判斷趨勢
                         </div>
                     </div>
                 </div>
