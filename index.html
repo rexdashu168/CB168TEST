@@ -567,9 +567,34 @@
         // 載入統計數據
         // ==========================================
         async function loadStatistics() {
+            const loadingDiv = document.getElementById('loading');
+            const containerDiv = document.querySelector('.container');
+            
             try {
+                console.log('🔄 開始載入資料...');
+                loadingDiv.textContent = '載入統計數據中... (正在讀取檔案)';
+                
                 const response = await fetch('cb_data_integrated.json');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP錯誤！狀態碼: ${response.status}`);
+                }
+                
+                loadingDiv.textContent = '載入統計數據中... (正在解析資料)';
                 const data = await response.json();
+                
+                console.log('📦 收到資料:', data);
+                
+                // 驗證資料結構
+                if (!data['統計數據']) {
+                    throw new Error('資料中缺少「統計數據」');
+                }
+                if (!data['CB資料庫']) {
+                    throw new Error('資料中缺少「CB資料庫」');
+                }
+                if (!data['競拍原始資料']) {
+                    throw new Error('資料中缺少「競拍原始資料」');
+                }
                 
                 statistics = data['統計數據'];
                 cbDatabase = data['CB資料庫'];
@@ -579,12 +604,38 @@
                 console.log('✅ CB資料庫載入成功，共', Object.keys(cbDatabase).length, '檔');
                 console.log('✅ 競拍原始資料載入成功，共', auctionRawData.length, '筆');
                 
+                loadingDiv.textContent = '載入統計數據中... (正在初始化介面)';
+                
                 // 初始化介面
                 initializeUI();
                 
+                // 隱藏載入訊息
+                loadingDiv.style.display = 'none';
+                containerDiv.style.display = 'block';
+                
+                console.log('✅ 系統初始化完成');
+                
             } catch (error) {
                 console.error('❌ 資料載入失敗:', error);
-                alert('資料載入失敗，請確認 cb_data_integrated.json 檔案存在');
+                loadingDiv.innerHTML = `
+                    <div style="color: #f44336; padding: 20px; background: #ffebee; border-radius: 8px; margin: 20px;">
+                        <h3 style="margin-top: 0;">❌ 資料載入失敗</h3>
+                        <p><strong>錯誤訊息：</strong>${error.message}</p>
+                        <p><strong>可能原因：</strong></p>
+                        <ul style="text-align: left;">
+                            <li>cb_data_integrated.json 檔案不存在</li>
+                            <li>檔案與HTML不在同一目錄</li>
+                            <li>檔案格式錯誤</li>
+                            <li>瀏覽器需要透過HTTP伺服器開啟（不能直接開檔案）</li>
+                        </ul>
+                        <p><strong>解決方式：</strong></p>
+                        <ol style="text-align: left;">
+                            <li>確認 cb_data_integrated.json 與 HTML 在同一資料夾</li>
+                            <li>使用本地伺服器開啟（如 Python: python -m http.server）</li>
+                            <li>檢查瀏覽器Console（F12）查看詳細錯誤</li>
+                        </ol>
+                    </div>
+                `;
             }
         }
 
@@ -702,6 +753,8 @@
                     
                     // 計算趨勢（比較前後半期）
                     let changePercent = 0;
+                    let trend, trendIcon;
+                    
                     if (periodCases.length >= 4) {
                         const sortedCases = periodCases.sort((a, b) => new Date(a['開標日期']) - new Date(b['開標日期']));
                         const midPoint = Math.floor(sortedCases.length / 2);
@@ -715,28 +768,28 @@
                         
                         const change = secondAvgMultiple - firstAvgMultiple;
                         changePercent = firstAvgMultiple > 0 ? (change / firstAvgMultiple * 100) : 0;
-                    }
-                    
-                    // 判斷趨勢
-                    let trend, trendIcon;
-                    if (periodCases.length < 4) {
-                        trend = "樣本不足";
-                        trendIcon = "⚠️";
-                    } else if (changePercent > 20) {
-                        trend = "強勢上升";
-                        trendIcon = "🔥";
-                    } else if (changePercent > 10) {
-                        trend = "溫和上升";
-                        trendIcon = "📈";
-                    } else if (changePercent > -10) {
+                        
+                        // 判斷趨勢
+                        if (changePercent > 20) {
+                            trend = "強勢上升";
+                            trendIcon = "🔥";
+                        } else if (changePercent > 10) {
+                            trend = "溫和上升";
+                            trendIcon = "📈";
+                        } else if (changePercent > -10) {
+                            trend = "平穩";
+                            trendIcon = "➡️";
+                        } else if (changePercent > -20) {
+                            trend = "溫和下降";
+                            trendIcon = "📉";
+                        } else {
+                            trend = "急劇下降";
+                            trendIcon = "❄️";
+                        }
+                    } else {
+                        // 樣本不足，但仍顯示基本趨勢
                         trend = "平穩";
                         trendIcon = "➡️";
-                    } else if (changePercent > -20) {
-                        trend = "溫和下降";
-                        trendIcon = "📉";
-                    } else {
-                        trend = "急劇下降";
-                        trendIcon = "❄️";
                     }
                     
                     // 判斷市場熱度（基於投標倍數）
@@ -805,36 +858,24 @@
                 if (sentiment.results[period]) {
                     const data = sentiment.results[period];
                     
-                    // 如果樣本不足，顯示警告
-                    if (!data.樣本充足) {
-                        html += `
-                            <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                                <div style="font-weight: bold; margin-bottom: 8px; color: #856404;">
-                                    ${period} ⚠️ 樣本不足
-                                </div>
-                                <div style="font-size: 13px; line-height: 1.8; color: #856404;">
-                                    📊 樣本數：<strong>${data.案例數}檔</strong> (樣本數 < 4，趨勢參考價值低)<br>
-                                    🎯 投標倍數：<strong>${data.投標倍數}倍</strong><br>
-                                    💰 投標均張：<strong>${data.投標均張}張</strong>
-                                </div>
+                    // 統一顯示格式，樣本不足時用黃色邊框提醒
+                    const borderColor = data.樣本充足 ? data.熱度顏色 : '#ffc107';
+                    const bgColor = data.樣本充足 ? '#f8f9fa' : '#fff3cd';
+                    
+                    html += `
+                        <div style="margin-bottom: 15px; padding: 12px; background: ${bgColor}; border-radius: 8px; border-left: 4px solid ${borderColor};">
+                            <div style="font-weight: bold; margin-bottom: 8px;">
+                                ${period} ${data.樣本充足 ? data.趨勢圖標 + ' ' + data.趨勢 : '⚠️ 樣本不足'}
+                                ${data.樣本充足 ? `<span style="color: ${data.熱度顏色}; font-size: 14px;">（${data.熱度}）</span>` : ''}
                             </div>
-                        `;
-                    } else {
-                        html += `
-                            <div style="margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid ${data.熱度顏色};">
-                                <div style="font-weight: bold; margin-bottom: 8px;">
-                                    ${period} ${data.趨勢圖標} ${data.趨勢} 
-                                    <span style="color: ${data.熱度顏色}; font-size: 14px;">（${data.熱度}）</span>
-                                </div>
-                                <div style="font-size: 13px; line-height: 1.8; color: #666;">
-                                    📊 樣本數：<strong>${data.案例數}檔</strong><br>
-                                    🎯 投標倍數：<strong style="color: ${data.熱度顏色}">${data.投標倍數}倍</strong> 
-                                    <span style="font-size: 12px;">(變化 ${data.變化}%)</span><br>
-                                    💰 投標均張：<strong>${data.投標均張}張</strong>
-                                </div>
+                            <div style="font-size: 13px; line-height: 1.8; color: ${data.樣本充足 ? '#666' : '#856404'};">
+                                📊 樣本數：<strong>${data.案例數}檔</strong>${!data.樣本充足 ? ' (樣本數 < 4，趨勢參考價值低)' : ''}<br>
+                                🎯 投標倍數：<strong style="color: ${data.樣本充足 ? data.熱度顏色 : '#856404'}">${data.投標倍數}倍</strong>
+                                ${data.樣本充足 ? ` <span style="font-size: 12px;">(變化 ${data.變化}%)</span>` : ' (變化 0.0%)'}<br>
+                                💰 投標均張：<strong>${data.投標均張}張</strong>
                             </div>
-                        `;
-                    }
+                        </div>
+                    `;
                 }
             });
             
@@ -923,11 +964,17 @@
                     const percentage = data['樣本比例'] || 0;
                     
                     document.getElementById('capitalInfo').style.display = 'block';
-                    document.getElementById('capitalStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
-                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
-                    `;
+                    
+                    let html = `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('capitalStats').innerHTML = html;
                     
                     // 觸發市場氛圍更新
                     updateMarketSentimentDisplay();
@@ -941,11 +988,17 @@
                     const percentage = data['樣本比例'] || 0;
                     
                     document.getElementById('industryInfo').style.display = 'block';
-                    document.getElementById('industryStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
-                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
-                    `;
+                    
+                    let html = `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('industryStats').innerHTML = html;
                     
                     // 觸發市場氛圍更新
                     updateMarketSentimentDisplay();
@@ -954,24 +1007,29 @@
 
             // 發行券商選擇（新增統計提示）
             document.getElementById('broker').addEventListener('change', function() {
-                if (this.value) {
+                if (this.value && statistics['維度統計']['發行券商'][this.value]) {
                     const data = statistics['維度統計']['發行券商'][this.value];
-                    const infoDiv = document.createElement('div');
-                    infoDiv.id = 'brokerInfo';
-                    infoDiv.className = 'info-box';
-                    infoDiv.style.marginTop = '10px';
-                    infoDiv.innerHTML = `
-                        <div class="title">📊 歷史統計</div>
-                        <div class="content">
-                            歷史樣本：${data['樣本數']}檔<br>
-                            平均掛牌最高：<strong style="color: #f44336">${data['平均掛牌最高']}元</strong><br>
-                            平均掛牌最低：<strong style="color: #4CAF50">${data['平均掛牌最低']}元</strong>
-                        </div>
-                    `;
                     
                     // 移除舊的資訊框
                     const oldInfo = document.getElementById('brokerInfo');
                     if (oldInfo) oldInfo.remove();
+                    
+                    // 創建新的資訊框
+                    const infoDiv = document.createElement('div');
+                    infoDiv.id = 'brokerInfo';
+                    infoDiv.className = 'info-box';
+                    infoDiv.style.marginTop = '10px';
+                    
+                    const percentage = ((data['樣本數'] / 286) * 100).toFixed(2);
+                    
+                    infoDiv.innerHTML = `
+                        <div class="title">📊 歷史統計</div>
+                        <div class="content">
+                            歷史樣本：${data['樣本數']}檔 (${percentage}%)<br>
+                            平均掛牌最高：<strong style="color: #f44336">${data['平均掛牌最高']}元</strong><br>
+                            平均掛牌最低：<strong style="color: #4CAF50">${data['平均掛牌最低']}元</strong>
+                        </div>
+                    `;
                     
                     // 插入新的資訊框
                     this.parentElement.appendChild(infoDiv);
@@ -991,12 +1049,18 @@
                     const percentage = data['樣本比例'] || 0;
                     
                     document.getElementById('sizeInfo').style.display = 'block';
-                    document.getElementById('sizeStats').innerHTML = `
-                        區間：${range}<br>
-                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
-                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
-                    `;
+                    
+                    let html = `區間：${range}<br>`;
+                    html += `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('sizeStats').innerHTML = html;
                     
                     // 觸發市場氛圍更新
                     updateMarketSentimentDisplay();
@@ -1019,12 +1083,18 @@
                     const percentage = data['樣本比例'] || 0;
                     
                     document.getElementById('conversionInfo').style.display = 'block';
-                    document.getElementById('conversionStats').innerHTML = `
-                        區間：${range}<br>
-                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
-                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
-                    `;
+                    
+                    let html = `區間：${range}<br>`;
+                    html += `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('conversionStats').innerHTML = html;
                 }
             });
 
@@ -1035,11 +1105,17 @@
                     const percentage = data['樣本比例'] || 0;
                     
                     document.getElementById('yearsInfo').style.display = 'block';
-                    document.getElementById('yearsStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
-                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
-                    `;
+                    
+                    let html = `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('yearsStats').innerHTML = html;
                 }
             });
 
@@ -1050,11 +1126,17 @@
                     const percentage = data['樣本比例'] || 0;
                     
                     document.getElementById('guaranteeInfo').style.display = 'block';
-                    document.getElementById('guaranteeStats').innerHTML = `
-                        歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>
-                        最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>
-                        ${data['平均得標價'] ? `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%` : '平均得標：暫無資料'}
-                    `;
+                    
+                    let html = `歷史樣本：${data['樣本數']}檔 (${percentage.toFixed(2)}%)<br>`;
+                    html += `最低得標：${data['平均最低得標']}元 / 溢價 ${data['平均最低溢價']}%<br>`;
+                    
+                    if (data['平均得標價'] !== undefined && data['平均溢價'] !== undefined) {
+                        html += `平均得標：${data['平均得標價']}元 / 溢價 ${data['平均溢價']}%`;
+                    } else {
+                        html += `平均得標：暫無資料`;
+                    }
+                    
+                    document.getElementById('guaranteeStats').innerHTML = html;
                     
                     // 觸發市場氛圍更新
                     updateMarketSentimentDisplay();
