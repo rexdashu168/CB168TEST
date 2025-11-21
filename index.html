@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI智能可轉債競拍系統 v3.21 (欄位精準對接版) - Rex大叔</title>
+    <title>AI智能可轉債競拍系統 v3.22 (掛牌數據精準對接版) - Rex大叔</title>
     
     <style>
         /* ================= 風格設定 ================= */
@@ -21,7 +21,7 @@
         }
         .header h1 { color: #667eea; font-size: 32px; margin-bottom: 10px; }
         .header .subtitle { color: #666; font-size: 16px; }
-        .version-badge { display: inline-block; background: #009688; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
+        .version-badge { display: inline-block; background: #FF5722; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
 
         .evaluation-container { display: grid; grid-template-columns: 450px 1fr; gap: 20px; }
         
@@ -40,7 +40,7 @@
         }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
         
-        /* 資訊框樣式 (卡片) */
+        /* 資訊框樣式 */
         .info-box {
             background: #e8f5e9; padding: 15px; border-radius: 8px;
             border-left: 5px solid #4CAF50; margin-top: 10px; display: none;
@@ -128,7 +128,7 @@
     
     <div class="container" style="display: none;">
         <div class="header">
-            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.21</span></h1>
+            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.22</span></h1>
             <p class="subtitle" id="headerSubtitle">載入中...</p>
         </div>
 
@@ -266,6 +266,8 @@
             
             try {
                 detailDiv.textContent = "正在同步讀取數據庫...";
+                // cb_data_integrated.json (統計 & 競拍原始資料)
+                // cb_names_database.json (00_CB代號名稱過濾及掛牌高低_20251031)
                 const [resMain, resNames] = await Promise.all([
                     fetch('cb_data_integrated.json').then(res => res.ok ? res.json() : null).catch(e => null),
                     fetch('cb_names_database.json').then(res => res.ok ? res.json() : null).catch(e => null)
@@ -277,17 +279,19 @@
                 auctionRawData = resMain['競拍原始資料'] || [];
                 let mainDB = resMain['CB資料庫'] || {};
 
+                // 合併資料庫
                 if (resNames) {
                     cbDatabase = { ...mainDB, ...resNames };
                 } else {
                     cbDatabase = mainDB;
                 }
 
-                // 建立名稱索引，方便反查掛牌價
+                // 建立名稱索引 (加速掛牌價查詢)
                 if (cbDatabase) {
                     Object.values(cbDatabase).forEach(item => {
                         if (item['名稱']) {
-                            cbNameMap[item['名稱']] = item;
+                            // 建立 key 時去除空白，方便比對
+                            cbNameMap[item['名稱'].trim()] = item;
                         }
                     });
                 }
@@ -307,6 +311,7 @@
             if (auctionRawData.length > 0) {
                 let sumLow = 0, sumAvg = 0, count = 0;
                 auctionRawData.forEach(d => {
+                    // 優先讀取中文欄位 (對接 04 資料庫)
                     const l = safeFloat(d['最低溢價'] || d['s1']);
                     const a = safeFloat(d['平均溢價'] || d['u1']);
                     if (l > 0 && a > 0) { sumLow += l; sumAvg += a; count++; }
@@ -314,6 +319,7 @@
                 if (count > 0) {
                     globalMarketStats.low = (sumLow / count);
                     globalMarketStats.avg = (sumAvg / count);
+                    // 校正百分比
                     if (globalMarketStats.low < 1) globalMarketStats.low *= 100;
                     if (globalMarketStats.avg < 1) globalMarketStats.avg *= 100;
                 }
@@ -358,7 +364,8 @@
             let count = 0, marketCount = 0;
 
             matches.forEach(d => {
-                // 讀取競拍數據 (支援您的欄位表)
+                // [資料源 1] 競拍數據 (04_所有CB競拍資料庫)
+                // 欄位映射：最低得標(r1), 最低溢價(s1), 平均得標(t1), 平均溢價(u1)
                 const lowPrice = safeFloat(d['最低得標'] || d['最低得標價格'] || d['r1']);
                 const lowPrem = safeFloat(d['最低溢價'] || d['最低得標價格_溢價率'] || d['s1']);
                 const avgPrice = safeFloat(d['平均得標'] || d['得標加權平均價格'] || d['t1']);
@@ -372,11 +379,13 @@
                     count++;
                 }
 
-                // 讀取掛牌數據 (透過名稱反查)
-                const cbName = d['名稱'] || d['CB名稱'];
+                // [資料源 2] 掛牌數據 (00_CB代號名稱過濾及掛牌高低)
+                // 透過名稱連結
+                const cbName = (d['名稱'] || d['CB名稱'] || '').trim();
                 if (cbName && cbNameMap[cbName]) {
                     const cbInfo = cbNameMap[cbName];
-                    const h = safeFloat(cbInfo['掛牌最高']);
+                    // 確保讀取的是 00 表的欄位
+                    const h = safeFloat(cbInfo['掛牌最高']); 
                     const l = safeFloat(cbInfo['掛牌最低']);
                     if (h > 0 && l > 0) {
                         sumHigh += h;
@@ -391,7 +400,7 @@
             let finalLowPrem = sumLowPrem / count;
             let finalAvgPrem = sumAvgPrem / count;
             
-            // 數值校正：避免將價格 (105) 誤判為溢價 (5)
+            // 數值校正
             if (finalLowPrem > 50) finalLowPrem -= 100;
             if (finalAvgPrem > 50) finalAvgPrem -= 100;
 
@@ -427,7 +436,7 @@
                 filterFn = d => (d['信評'] || d['TCRI'] || '').toString().includes(val.toString());
             }
 
-            // 嘗試即時運算
+            // 1. 嘗試即時運算 (最準確)
             if (filterFn) {
                 const dyn = getDynamicStats(filterFn);
                 if (dyn) {
@@ -437,7 +446,7 @@
                 }
             }
 
-            // 若即時運算無結果，嘗試讀取預統計檔
+            // 2. 若即時運算無結果，嘗試讀取預統計檔
             if (stats.low === 0 && statistics['維度統計'] && statistics['維度統計'][category]) {
                 let data = statistics['維度統計'][category][val];
                 if (!data && typeof val === 'number') {
@@ -451,7 +460,7 @@
                 }
             }
 
-            // 自動替補機制 (Global Fallback)
+            // 3. 自動替補機制 (Global Fallback) - 避免 NaN
             if (stats.low === 0 || stats.avg === 0) {
                 stats.low = globalMarketStats.low;
                 stats.avg = globalMarketStats.avg;
@@ -558,6 +567,9 @@
                         const amp = l > 0 ? ((h-l)/l*100).toFixed(2) : 0;
                         html += `<div class="stat-row" style="justify-content:space-between;"><span>📈 最高:${h}</span><span>📉 最低:${l}</span><span style="color:#E91E63;">⚡ ${amp}%</span></div>`;
                     }
+                    if (found['資金用途']) {
+                        html += `<div class="stat-row" style="margin-top:5px; border-top:1px dashed #ccc; padding-top:5px; font-size:12px; color:#666;">💡 用途: ${found['資金用途']}</div>`;
+                    }
                     show('cbNameInfo', html);
                 } else show('cbNameInfo', null);
             });
@@ -566,13 +578,11 @@
                 document.getElementById(id).addEventListener(isNum ? 'input' : 'change', function() {
                     const val = isNum ? parseFloat(this.value) : this.value;
                     if (val) {
-                        let data = null;
-                        let key = val;
-                        
-                        // 統一使用 Smart 獲取 (自動判定動態或靜態)
+                        // 統一使用 Smart 獲取
                         const smartResult = getStatsSmart(cat, val);
-                        data = smartResult.rawData;
+                        let data = smartResult.rawData;
                         
+                        let key = val;
                         if (isNum) key = findBestRangeKey(cat, val) || val;
                         
                         show(id+'Info', generateStandardCard(data, key ? `歷史統計 (${key})` : `歷史統計 (${val})`));
@@ -703,7 +713,6 @@
             }
             stats.market = { low: mLow, avg: mAvg };
 
-            // V3.21 權重配置 (移除理論價)
             const w = { 
                 industry: 0.30,
                 guarantee: 0.20,
@@ -714,6 +723,7 @@
                 capital: 0.05
             };
 
+            // 加權計算
             let comp = 
                 stats.industry.low * w.industry +
                 stats.guarantee.low * w.guarantee +
