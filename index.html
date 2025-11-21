@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI智能可轉債競拍系統 v3.9 (絕對防禦版) - Rex大叔</title>
+    <title>AI智能可轉債競拍系統 v3.11 (智能適配版) - Rex大叔</title>
     
     <style>
         /* ================= 風格設定 ================= */
@@ -21,7 +21,7 @@
         }
         .header h1 { color: #667eea; font-size: 32px; margin-bottom: 10px; }
         .header .subtitle { color: #666; font-size: 16px; }
-        .version-badge { display: inline-block; background: #4CAF50; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
+        .version-badge { display: inline-block; background: #E91E63; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
 
         .evaluation-container { display: grid; grid-template-columns: 450px 1fr; gap: 20px; }
         
@@ -41,7 +41,7 @@
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
         .form-group small { display: block; color: #999; font-size: 12px; margin-top: 5px; }
 
-        /* 資訊框 (V3.4 風格) */
+        /* 資訊框 (綠色系風格) */
         .info-box {
             background: #e8f5e9; 
             padding: 15px; 
@@ -90,7 +90,7 @@
         .strategy-card.aggressive { border-color: #f44336; background: #fff0f0; }
         .strategy-card .price { font-size: 32px; font-weight: bold; margin: 20px 0; }
 
-        /* V3.5 的表格樣式 */
+        /* 專業數據表格樣式 (V3.5) */
         .data-table {
             width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -119,7 +119,7 @@
     
     <div class="container" style="display: none;">
         <div class="header">
-            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.9 絕對防禦版</span></h1>
+            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.11 智能適配版</span></h1>
             <p class="subtitle" id="headerSubtitle">載入中...</p>
         </div>
 
@@ -243,55 +243,71 @@
         let auctionRawData = null;
 
         // ==========================================
-        // 1. 卡片生成邏輯 (修復版：解決資料消失與錯誤問題)
+        // 1. 智能區間匹配核心 (解決查不到資料的關鍵)
         // ==========================================
-        function generateStandardCard(data) {
-            // 修復：如果沒有資料，顯示「查無資料」而不是空白，解決「資料不見」的誤解
-            if (!data) {
-                return `<div class="stats-header">📊 歷史統計</div><div class="stat-row" style="color:#999;">查無此條件的歷史資料</div>`;
-            }
+        function findBestRangeKey(category, value) {
+            if (!statistics || !statistics['維度統計'] || !statistics['維度統計'][category]) return null;
+            const keys = Object.keys(statistics['維度統計'][category]);
             
-            // 安全取得樣本數
-            const sampleCount = data['樣本數'] || 0;
-            if (sampleCount === 0) {
-                return `<div class="stats-header">📊 歷史統計</div><div class="stat-row" style="color:#999;">歷史樣本數為 0</div>`;
+            // 嘗試解析每個 Key 的數字範圍
+            for (let key of keys) {
+                // 移除 "億", "元", "年以上", "年", "<", ">", "TCRI" 等非數字字符，只留數字和連接符
+                let cleanKey = key.replace(/[^\d\.-]/g, ' ').trim();
+                let parts = cleanKey.split(/\s+/).map(parseFloat);
+                
+                // 情況1: "< 3億" (parts = [3])
+                if (key.includes('<') && parts.length === 1) {
+                    if (value < parts[0]) return key;
+                }
+                // 情況2: "> 20億" (parts = [20])
+                else if ((key.includes('>') || key.includes('以上')) && parts.length === 1) {
+                    if (value >= parts[0]) return key;
+                }
+                // 情況3: "3-6億" (parts = [3, 6])
+                else if (parts.length === 2) {
+                    if (value >= parts[0] && value < parts[1]) return key;
+                }
+                // 情況4: 純數字匹配 (如年期 "3年")
+                else if (parts.length === 1 && value === parts[0]) {
+                    return key;
+                }
             }
+            return null; // 沒找到匹配
+        }
 
-            // 輔助函式：安全格式化百分比與價格，避免 undefined
-            const fmtPct = (val) => val !== undefined && val !== null ? `${val}%` : '-';
-            const fmtPrice = (val) => val !== undefined && val !== null ? `${val}元` : '-';
-
+        // ==========================================
+        // 2. 卡片生成 (全欄位補齊 + 防呆)
+        // ==========================================
+        function generateStandardCard(data, titleOverride=null) {
+            if (!data) return `<div class="stat-row" style="color:#999;">查無此條件的歷史統計</div>`;
+            
             const percentage = data['樣本比例'] ? `(${data['樣本比例'].toFixed(1)}%)` : '';
+            const sampleText = `歷史樣本: ${data['樣本數'] || 0} 檔 ${percentage}`;
+            const val = (v) => (v !== undefined && v !== null) ? v : '-';
+            
             let html = `
-                <div class="stats-header">📊 歷史統計</div>
-                <div class="stat-row" style="color:#555; font-weight:bold;">歷史樣本: ${sampleCount} 檔 ${percentage}</div>
-                <div class="stat-row">📉 最低得標: ${fmtPrice(data['平均最低得標'])} / 溢價 ${fmtPct(data['平均最低溢價'])}</div>
+                <div class="stats-header">📊 ${titleOverride || '歷史統計'}</div>
+                <div class="stat-row" style="color:#555; font-weight:bold;">${sampleText}</div>
+                <div class="stat-row">📉 最低得標: ${val(data['平均最低得標'])}元 / 溢價 ${val(data['平均最低溢價'])}%</div>
+                <div class="stat-row">⚖️ 平均得標: ${val(data['平均得標價'])}元 / 溢價 ${val(data['平均溢價'])}%</div>
             `;
-
-            // 補齊平均得標數據
-            html += `<div class="stat-row">⚖️ 平均得標: ${fmtPrice(data['平均得標價'])} / 溢價 ${fmtPct(data['平均溢價'])}</div>`;
 
             // 掛牌數據
             if (data['平均掛牌最高'] && data['平均掛牌最低']) {
                 const h = parseFloat(data['平均掛牌最高']);
                 const l = parseFloat(data['平均掛牌最低']);
                 const amp = ((h - l) / l * 100).toFixed(1);
-                
                 html += `
                     <div class="stat-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed #ccc; justify-content: space-between;">
-                        <span>📈 最高:${h}</span>
-                        <span>📉 最低:${l}</span>
-                        <span style="color:#E91E63;">⚡ 振幅:${amp}%</span>
+                        <span>📈 最高:${h}</span><span>📉 最低:${l}</span><span style="color:#E91E63;">⚡ 振幅:${amp}%</span>
                     </div>
                 `;
-            } else {
-                 html += `<div class="stat-row" style="margin-top:5px; color:#999; font-size:12px;">(無足夠掛牌數據計算振幅)</div>`;
             }
             return html;
         }
 
         // ==========================================
-        // 2. 載入資料
+        // 3. 初始化
         // ==========================================
         async function loadStatistics() {
             const loadingDiv = document.getElementById('loading');
@@ -317,6 +333,7 @@
             const totalCB = Object.keys(cbDatabase).length;
             document.getElementById('headerSubtitle').textContent = `Rex大叔的168台股投資教室 | 整合${totalCB.toLocaleString()}檔CB完整資料`;
             
+            // 從 JSON 動態讀取 Key 來填充選單 (解決選單與資料不一致問題)
             populateSelect('industry', statistics['維度統計']['產業']);
             populateSelect('broker', statistics['維度統計']['發行券商']);
             
@@ -326,14 +343,10 @@
 
         function populateSelect(id, dataObj) {
             const select = document.getElementById(id);
-            const items = Object.keys(dataObj);
-            items.sort((a, b) => {
-                const hasPriceA = dataObj[a]['平均掛牌最高'] ? 1 : 0;
-                const hasPriceB = dataObj[b]['平均掛牌最高'] ? 1 : 0;
-                if (hasPriceA !== hasPriceB) return hasPriceB - hasPriceA;
-                return (dataObj[b]['樣本數'] || 0) - (dataObj[a]['樣本數'] || 0);
-            });
-            
+            while (select.options.length > 1) { select.remove(1); } // 重置
+            if(!dataObj) return;
+
+            const items = Object.keys(dataObj).sort((a, b) => (dataObj[b]['樣本數'] || 0) - (dataObj[a]['樣本數'] || 0));
             items.forEach(item => {
                 const option = document.createElement('option');
                 option.value = item;
@@ -351,18 +364,16 @@
         }
 
         // ==========================================
-        // 3. 事件綁定 (使用安全的讀取方式)
+        // 4. 事件綁定 (使用智能匹配)
         // ==========================================
         function bindInputEvents() {
-            
-            const showCard = (id, htmlContent) => {
-                const div = document.getElementById(id);
-                // 只要有內容就顯示，generateStandardCard 會處理無資料的情況
-                div.innerHTML = htmlContent;
-                div.style.display = 'block';
+            const show = (id, html) => { 
+                const el = document.getElementById(id); 
+                el.innerHTML = html || ''; 
+                el.style.display = html ? 'block' : 'none'; 
             };
 
-            // 1. CB名稱查詢
+            // 1. CB名稱
             document.getElementById('cbName').addEventListener('input', function() {
                 const val = this.value.trim();
                 const found = Object.values(cbDatabase).find(d => d['名稱'].includes(val));
@@ -370,144 +381,100 @@
                     let html = `
                         <div class="stats-header">📊 掛牌價格參考</div>
                         <div class="stat-row">${found['代號']} / ${found['股票代號']}</div>
-                        <div class="stat-row" style="justify-content: space-between;">
-                             <span>📈 最高:${found['掛牌最高'] || '-'}</span>
-                             <span>📉 最低:${found['掛牌最低'] || '-'}</span>
-                        </div>
+                        <div class="stat-row" style="justify-content: space-between;"><span>📈 最高:${found['掛牌最高']||'-'}</span><span>📉 最低:${found['掛牌最低']||'-'}</span></div>
                     `;
                     if (found['掛牌最高'] && found['掛牌最低']) {
-                         const h = parseFloat(found['掛牌最高']);
-                         const l = parseFloat(found['掛牌最低']);
-                         const amp = ((h-l)/l*100).toFixed(1);
-                         html += `<div class="stat-row" style="justify-content:flex-end; color:#E91E63;">⚡ 振幅:${amp}%</div>`;
+                        const h = parseFloat(found['掛牌最高']), l = parseFloat(found['掛牌最低']);
+                        html += `<div class="stat-row" style="justify-content:flex-end; color:#E91E63;">⚡ 振幅:${((h-l)/l*100).toFixed(1)}%</div>`;
                     }
-                    showCard('cbNameInfo', html);
-                } else {
-                    showCard('cbNameInfo', '<div class="stat-row" style="color:#999;">查無此CB資料</div>');
-                }
+                    show('cbNameInfo', html);
+                } else show('cbNameInfo', null);
             });
 
-            // 2. 股本
+            // 2. 股本 (使用智能匹配 findBestRangeKey)
             document.getElementById('capital').addEventListener('input', function() {
                 const val = parseFloat(this.value);
                 if (val) {
-                    const range = val < 3 ? '<3億' : val < 6 ? '3-6億' : val < 10 ? '6-10億' : val < 15 ? '10-15億' : val < 20 ? '15-20億' : '>20億';
-                    // 安全讀取
-                    const catData = statistics['維度統計'] && statistics['維度統計']['股本'];
-                    const data = catData ? catData[range] : null;
-                    showCard('capitalInfo', generateStandardCard(data));
+                    const key = findBestRangeKey('股本', val);
+                    const data = key ? statistics['維度統計']['股本'][key] : null;
+                    show('capitalInfo', generateStandardCard(data, key ? `歷史統計 (${key})` : null));
                 }
             });
 
-            // 3. 產業
-            document.getElementById('industry').addEventListener('change', function() {
-                if (this.value) {
-                    const catData = statistics['維度統計'] && statistics['維度統計']['產業'];
-                    const data = catData ? catData[this.value] : null;
-                    showCard('industryInfo', generateStandardCard(data));
-                }
-            });
-
-            // 4. 券商
-            document.getElementById('broker').addEventListener('change', function() {
-                if (this.value) {
-                    const catData = statistics['維度統計'] && statistics['維度統計']['發行券商'];
-                    const data = catData ? catData[this.value] : null;
-                    showCard('brokerInfo', generateStandardCard(data));
-                }
-            });
-
-            // 5. 發行規模
+            // 3. 發行規模 (使用智能匹配)
             document.getElementById('issueSize').addEventListener('input', function() {
                 const val = parseFloat(this.value);
                 if (val) {
-                    const range = val < 2 ? '<2億' : val < 5 ? '2-5億' : val < 10 ? '5-10億' : val < 15 ? '10-15億' : val < 20 ? '15-20億' : '>20億';
-                    const catData = statistics['維度統計'] && statistics['維度統計']['發行規模'];
-                    const data = catData ? catData[range] : null;
-                    showCard('sizeInfo', generateStandardCard(data));
+                    const key = findBestRangeKey('發行規模', val);
+                    const data = key ? statistics['維度統計']['發行規模'][key] : null;
+                    show('sizeInfo', generateStandardCard(data, key ? `歷史統計 (${key})` : null));
                 }
             });
 
-            // 6. 轉換價格
+            // 4. 轉換價 (使用智能匹配)
             document.getElementById('conversionPrice').addEventListener('input', function() {
                 const val = parseFloat(this.value);
                 if (val) {
-                    const range = val < 20 ? '<20元' : val < 50 ? '20-50元' : val < 100 ? '50-100元' : val < 150 ? '100-150元' : val < 200 ? '150-200元' : '>200元';
-                    const catData = statistics['維度統計'] && statistics['維度統計']['轉換價'];
-                    const data = catData ? catData[range] : null;
-                    showCard('conversionInfo', generateStandardCard(data));
+                    const key = findBestRangeKey('轉換價', val);
+                    const data = key ? statistics['維度統計']['轉換價'][key] : null;
+                    show('conversionInfo', generateStandardCard(data, key ? `歷史統計 (${key})` : null));
                     updateSmartReminders();
                 }
             });
 
-            // 7. 年期
-            document.getElementById('years').addEventListener('change', function() {
-                if (this.value) {
-                    const catData = statistics['維度統計'] && statistics['維度統計']['年期'];
-                    const data = catData ? catData[this.value + '年'] : null;
-                    showCard('yearsInfo', generateStandardCard(data));
-                }
-            });
-
-            // 8. 擔保
-            document.getElementById('guarantee').addEventListener('change', function() {
-                if (this.value) {
-                    const catData = statistics['維度統計'] && statistics['維度統計']['擔保'];
-                    const data = catData ? catData[this.value] : null;
-                    showCard('guaranteeInfo', generateStandardCard(data));
-                    updateMarketSentimentDisplay();
-                    updateSmartReminders();
-                }
-            });
-
-            // 9. 信評
-            document.getElementById('rating').addEventListener('change', function() {
-                const val = this.value;
-                if (val) {
-                    let rangeKey = '';
-                    if (val === 'BBB') rangeKey = 'BBB';
-                    else {
-                        const num = parseInt(val);
-                        if (num <= 3) rangeKey = '2-3分';
-                        else if (num <= 5) rangeKey = '4-5分';
-                        else if (num <= 7) rangeKey = '6-7分';
-                        else rangeKey = '8-9分';
+            // 5. 產業/券商/擔保 (直接查表)
+            ['industry', 'broker', 'guarantee'].forEach(id => {
+                const cat = id==='industry'?'產業':id==='broker'?'發行券商':'擔保';
+                document.getElementById(id).addEventListener('change', function() {
+                    if (this.value) {
+                        const data = statistics['維度統計'][cat] ? statistics['維度統計'][cat][this.value] : null;
+                        show(id+'Info', generateStandardCard(data));
+                        if(id==='guarantee') updateMarketSentimentDisplay();
                     }
-                    const catData = statistics['維度統計'] && statistics['維度統計']['信評'];
-                    const data = catData ? catData[rangeKey] : null;
-                    showCard('ratingInfo', generateStandardCard(data));
-                    updateSmartReminders();
+                });
+            });
+
+            // 6. 年期 (智能匹配數字)
+            document.getElementById('years').addEventListener('change', function() {
+                if(this.value) {
+                    const key = findBestRangeKey('年期', parseFloat(this.value));
+                    const data = key ? statistics['維度統計']['年期'][key] : null;
+                    show('yearsInfo', generateStandardCard(data));
+                }
+            });
+
+            // 7. 信評 (智能匹配)
+            document.getElementById('rating').addEventListener('change', function() {
+                if(this.value) {
+                    let key = this.value === 'BBB' ? 'BBB' : findBestRangeKey('信評', parseFloat(this.value));
+                    // 如果找不到數字區間，嘗試直接 mapping (相容舊格式)
+                    if(!key && this.value !== 'BBB') {
+                        const v = parseInt(this.value);
+                        key = v<=3?'2-3分':v<=5?'4-5分':v<=7?'6-7分':'8-9分';
+                    }
+                    const data = statistics['維度統計']['信評'] ? statistics['維度統計']['信評'][key] : null;
+                    show('ratingInfo', generateStandardCard(data, key ? `歷史統計 (${key})` : null));
                 }
             });
 
             document.getElementById('stockPrice').addEventListener('input', updateSmartReminders);
         }
 
-        // ==========================================
-        // 4. 計算與結果顯示 (絕對安全版)
-        // ==========================================
-        
-        // 輔助：取得完整統計 (Low & Avg) - 絕對安全版
-        function getStatsFull(category, key) {
-             try {
-                // 三重檢查，確保不會報錯
-                if (!statistics || !statistics['維度統計']) return { low: 0, avg: 0 };
-                
-                const catData = statistics['維度統計'][category];
-                if (!catData) return { low: 0, avg: 0 };
-
-                const item = catData[key];
-                if (!item) return { low: 0, avg: 0 };
-
-                return {
-                    // 這裡是最關鍵的修復：確保 item 存在才讀取屬性
-                    low: item['平均最低溢價'] !== undefined ? item['平均最低溢價'] : 0,
-                    avg: item['平均溢價'] !== undefined ? item['平均溢價'] : (item['平均最低溢價'] !== undefined ? item['平均最低溢價'] : 0)
-                };
-            } catch (e) {
-                console.error(`getStatsFull error for ${category}->${key}:`, e);
-                return { low: 0, avg: 0 };
+        // 5. 計算與結果
+        function getStatsSmart(category, val) {
+            // 嘗試直接匹配 (如文字 Key)
+            let data = statistics['維度統計'][category] ? statistics['維度統計'][category][val] : null;
+            // 如果失敗且 val 是數字，嘗試範圍匹配
+            if (!data && !isNaN(parseFloat(val))) {
+                const key = findBestRangeKey(category, parseFloat(val));
+                if (key) data = statistics['維度統計'][category][key];
             }
+            
+            if (!data) return { low: 0, avg: 0 };
+            return {
+                low: data['平均最低溢價'] || 0,
+                avg: data['平均溢價'] || data['平均最低溢價'] || 0
+            };
         }
 
         function calculateRecentMarketSentiment() {
@@ -518,46 +485,33 @@
             
             if (cases.length === 0) return { low: 0, avg: 0, count: 0 };
             
-            // 安全計算平均值
-            let sumLow = 0, sumAvg = 0, count = 0;
-            cases.forEach(item => {
-                if (item['最低溢價'] !== undefined) { sumLow += item['最低溢價']; }
-                if (item['平均溢價'] !== undefined) { sumAvg += item['平均溢價']; }
-                count++;
+            let sumLow = 0, sumAvg = 0;
+            cases.forEach(i => {
+                sumLow += i['最低溢價'] || 0;
+                sumAvg += i['平均溢價'] || 0;
             });
-
-            if (count === 0) return { low: 0, avg: 0, count: 0 };
-
+            
             return {
-                low: (sumLow / count * 100).toFixed(2),
-                avg: (sumAvg / count * 100).toFixed(2),
-                count: count
+                low: (sumLow / cases.length * 100).toFixed(2),
+                avg: (sumAvg / cases.length * 100).toFixed(2),
+                count: cases.length
             };
         }
 
         function calculateEvaluation(data) {
-            // 防止除以零
-            const conversionPrice = data.conversionPrice || 1; 
+            const conversionPrice = data.conversionPrice || 1;
             const theoreticalPrice = (data.stockPrice / conversionPrice) * 100;
             
-            let sizeRange = data.issueSize < 2 ? '<2億' : data.issueSize < 5 ? '2-5億' : data.issueSize < 10 ? '5-10億' : data.issueSize < 15 ? '10-15億' : data.issueSize < 20 ? '15-20億' : '>20億';
-            let capitalRange = data.capital < 3 ? '<3億' : data.capital < 6 ? '3-6億' : data.capital < 10 ? '6-10億' : data.capital < 15 ? '10-15億' : data.capital < 20 ? '15-20億' : '>20億';
-            let convRange = data.conversionPrice < 20 ? '<20元' : data.conversionPrice < 50 ? '20-50元' : data.conversionPrice < 100 ? '50-100元' : data.conversionPrice < 150 ? '100-150元' : data.conversionPrice < 200 ? '150-200元' : '>200元';
-            let theoRange = theoreticalPrice < 85 ? '<85元' : theoreticalPrice < 90 ? '85-90元' : theoreticalPrice < 95 ? '90-95元' : theoreticalPrice < 98 ? '95-98元' : theoreticalPrice < 100 ? '98-100元' : theoreticalPrice < 102 ? '100-102元' : theoreticalPrice < 105 ? '102-105元' : theoreticalPrice < 110 ? '105-110元' : '>110元';
-            
-            let ratingKey = data.rating === 'BBB' ? 'BBB' : (parseInt(data.rating)<=3?'2-3分':parseInt(data.rating)<=5?'4-5分':parseInt(data.rating)<=7?'6-7分':'8-9分');
-
-            // 收集完整數據 (使用安全的 getStatsFull)
             const stats = {};
-            stats.industry = getStatsFull('產業', data.industry);
-            stats.size = getStatsFull('發行規模', sizeRange);
-            stats.capital = getStatsFull('股本', capitalRange);
-            stats.years = getStatsFull('年期', data.years + '年');
-            stats.guarantee = getStatsFull('擔保', data.guarantee);
-            stats.rating = getStatsFull('信評', ratingKey);
-            stats.conversion = getStatsFull('轉換價', convRange);
-            stats.theoretical = getStatsFull('理論價', theoRange);
-            
+            stats.industry = getStatsSmart('產業', data.industry);
+            stats.size = getStatsSmart('發行規模', data.issueSize);
+            stats.capital = getStatsSmart('股本', data.capital);
+            stats.years = getStatsSmart('年期', data.years);
+            stats.guarantee = getStatsSmart('擔保', data.guarantee);
+            stats.rating = getStatsSmart('信評', data.rating); // 使用 smart lookup
+            stats.conversion = getStatsSmart('轉換價', data.conversionPrice);
+            stats.theoretical = getStatsSmart('理論價', theoreticalPrice); // 使用 smart lookup
+
             const sent = calculateRecentMarketSentiment();
             stats.market = { low: parseFloat(sent.low), avg: parseFloat(sent.avg) };
 
@@ -575,6 +529,14 @@
             
             const theoreticalBidPrice = theoreticalPrice * (1 + comprehensivePremium / 100);
 
+            // 產生區間文字 (僅供顯示)
+            const ranges = {
+                size: findBestRangeKey('發行規模', data.issueSize) || '-',
+                capital: findBestRangeKey('股本', data.capital) || '-',
+                conversion: findBestRangeKey('轉換價', data.conversionPrice) || '-',
+                theoretical: findBestRangeKey('理論價', theoreticalPrice) || '-'
+            };
+
             return {
                 cbName: data.cbName,
                 theoreticalPrice: theoreticalPrice.toFixed(2),
@@ -587,7 +549,7 @@
                     aggressive: (theoreticalBidPrice * 1.05).toFixed(2)
                 },
                 inputData: { ...data, ratingDisplay: `TCRI ${data.rating}` },
-                ranges: { size: sizeRange, capital: capitalRange, conversion: convRange, theoretical: theoRange }
+                ranges: ranges
             };
         }
 
@@ -597,7 +559,6 @@
             resultDiv.className = 'evaluation-result active';
             
             const fmtVal = (val) => {
-                // 安全處理非數字
                 if (val === undefined || val === null || isNaN(val)) return '-';
                 const num = parseFloat(val);
                 const cls = num > 0 ? 'val-pos' : num < 0 ? 'val-neg' : 'val-neu';
@@ -635,7 +596,7 @@
             resultDiv.innerHTML = `
                 <div class="result-header">
                     <h2>${result.cbName}</h2>
-                    <div class="subtitle">資料驅動AI評估結果 (V3.9)</div>
+                    <div class="subtitle">資料驅動AI評估結果 (V3.11)</div>
                 </div>
                 <div class="detail-section">
                     <h3>📊 理論價格計算</h3>
@@ -651,9 +612,9 @@
                 <div class="detail-section">
                     <h3>💡 AI投標價格建議</h3>
                     <div class="price-grid">
-                        <div class="strategy-card conservative"><h4>🛡️ 保守策略</h4><div class="price">${result.bidPrices.conservative}</div><div style="font-size:12px;color:#666">貼近地板價，安全邊際高</div></div>
-                        <div class="strategy-card balanced"><h4>⚖️ 平衡策略</h4><div class="price">${result.bidPrices.balanced}</div><div style="font-size:12px;color:#666">合理溢價，兼顧得標率</div></div>
-                        <div class="strategy-card aggressive"><h4>🚀 積極策略</h4><div class="price">${result.bidPrices.aggressive}</div><div style="font-size:12px;color:#666">追逐熱門，確保籌碼</div></div>
+                        <div class="strategy-card conservative"><h4>🛡️ 保守策略</h4><div class="price">${result.bidPrices.conservative}</div></div>
+                        <div class="strategy-card balanced"><h4>⚖️ 平衡策略</h4><div class="price">${result.bidPrices.balanced}</div></div>
+                        <div class="strategy-card aggressive"><h4>🚀 積極策略</h4><div class="price">${result.bidPrices.aggressive}</div></div>
                     </div>
                 </div>
                 <div style="text-align:center; margin-top:30px;">
@@ -698,23 +659,9 @@
             }
         }
 
-        // 添加全局錯誤處理，防止彈出醜陋的錯誤視窗
-        window.onerror = function(message, source, lineno, colno, error) {
-            console.error('Global error caught:', message, error);
-            // 可以選擇在頁面上顯示一個友好的錯誤提示，而不是彈窗
-            return true; // 阻止默認的錯誤處理（例如彈窗）
-        };
-
         document.getElementById('evaluationForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            // 簡單的表單驗證
-            if (!statistics) { alert('資料尚未載入完成，請稍候'); return; }
-            const stockPrice = parseFloat(document.getElementById('stockPrice').value);
-            const conversionPrice = parseFloat(document.getElementById('conversionPrice').value);
-            if (isNaN(stockPrice) || isNaN(conversionPrice) || conversionPrice <= 0) {
-                alert('請輸入有效的股價和轉換價'); return;
-            }
-
+            if (!statistics) return;
             const formData = {
                 cbName: document.getElementById('cbName').value,
                 industry: document.getElementById('industry').value,
@@ -723,15 +670,10 @@
                 guarantee: document.getElementById('guarantee').value,
                 rating: document.getElementById('rating').value,
                 capital: parseFloat(document.getElementById('capital').value),
-                stockPrice: stockPrice,
-                conversionPrice: conversionPrice
+                stockPrice: parseFloat(document.getElementById('stockPrice').value),
+                conversionPrice: parseFloat(document.getElementById('conversionPrice').value)
             };
-            try {
-                displayResult(calculateEvaluation(formData));
-            } catch (err) {
-                console.error("評估過程發生錯誤:", err);
-                alert("評估過程發生非預期錯誤，請檢查輸入資料或聯繫管理員。");
-            }
+            displayResult(calculateEvaluation(formData));
         });
 
         window.addEventListener('DOMContentLoaded', loadStatistics);
