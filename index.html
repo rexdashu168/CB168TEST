@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI智能可轉債競拍系統 v3.17 (NaN修復與券商連結版) - Rex大叔</title>
+    <title>AI智能可轉債競拍系統 v3.18 (數據全揭露完美版) - Rex大叔</title>
     
     <style>
         /* ================= 風格設定 ================= */
@@ -21,7 +21,7 @@
         }
         .header h1 { color: #667eea; font-size: 32px; margin-bottom: 10px; }
         .header .subtitle { color: #666; font-size: 16px; }
-        .version-badge { display: inline-block; background: #009688; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
+        .version-badge { display: inline-block; background: #9C27B0; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
 
         .evaluation-container { display: grid; grid-template-columns: 450px 1fr; gap: 20px; }
         
@@ -40,7 +40,7 @@
         }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
         
-        /* 資訊框樣式 */
+        /* 資訊框樣式 (卡片) */
         .info-box {
             background: #e8f5e9; padding: 15px; border-radius: 8px;
             border-left: 5px solid #4CAF50; margin-top: 10px; display: none;
@@ -128,7 +128,7 @@
     
     <div class="container" style="display: none;">
         <div class="header">
-            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.17</span></h1>
+            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.18</span></h1>
             <p class="subtitle" id="headerSubtitle">載入中...</p>
         </div>
 
@@ -251,8 +251,9 @@
         let cbDatabase = null;
         let auctionRawData = null;
 
-        // 安全浮點數轉換，避免 NaN
+        // 安全浮點數轉換 (防呆核心)
         function safeFloat(val) {
+            if (val === undefined || val === null || val === '') return 0;
             const num = parseFloat(val);
             return isNaN(num) ? 0 : num;
         }
@@ -341,58 +342,66 @@
         }
 
         // ==========================================
-        // 3. 動態計算發行券商數據 (修復沒資料問題)
+        // 3. 動態計算發行券商數據 (含得標價與溢價)
         // ==========================================
         function getDynamicBrokerStats(brokerName) {
-            // 從原始資料中即時撈取
-            if (!auctionRawData || auctionRawData.length === 0) return { low: 0, avg: 0 };
+            if (!auctionRawData || auctionRawData.length === 0) return null;
 
-            // 模糊比對券商名稱 (防止 "凱基" vs "凱基證券")
             const matches = auctionRawData.filter(d => {
                 const name = d['發行券商'] || d['主辦券商'] || d['券商'] || ''; 
                 return name.includes(brokerName) || brokerName.includes(name);
             });
 
-            if (matches.length === 0) return { low: 0, avg: 0 };
+            if (matches.length === 0) return null;
 
-            let sumLow = 0;
-            let sumAvg = 0;
+            let sumLowPrice = 0, sumAvgPrice = 0;
+            let sumLowPrem = 0, sumAvgPrem = 0;
             let count = 0;
 
             matches.forEach(d => {
-                // 欄位映射修復: 支援多種可能的欄位名稱
-                const low = safeFloat(d['最低得標價格_溢價率'] || d['最低溢價'] || d['s1']); 
-                const avg = safeFloat(d['得標加權平均價格_溢價率'] || d['平均溢價'] || d['u1']);
+                // 讀取資料庫欄位 (r1, s1, t1, u1)
+                const lowPrice = safeFloat(d['最低得標價格'] || d['r1']);
+                const lowPrem = safeFloat(d['最低得標價格_溢價率'] || d['最低溢價'] || d['s1']);
+                const avgPrice = safeFloat(d['得標加權平均價格'] || d['平均得標'] || d['t1']);
+                const avgPrem = safeFloat(d['得標加權平均價格_溢價率'] || d['平均溢價'] || d['u1']);
                 
-                if (low !== 0 || avg !== 0) {
-                    sumLow += low;
-                    sumAvg += avg;
+                if (lowPrice > 0 || lowPrem > 0) {
+                    sumLowPrice += lowPrice;
+                    sumAvgPrice += avgPrice;
+                    sumLowPrem += lowPrem;
+                    sumAvgPrem += avgPrem;
                     count++;
                 }
             });
 
-            if (count === 0) return { low: 0, avg: 0 };
+            if (count === 0) return null;
 
-            // 如果原始數據是 105 (代表105元)，轉成溢價率 (5%)
-            // 如果原始數據已經是 5 (代表5%)，則保持
-            // 這裡假設資料庫可能是混雜的，做一個簡單的 heuristic
-            let finalLow = sumLow / count;
-            let finalAvg = sumAvg / count;
+            // 格式化與數值校正 (避免 105 變成 5)
+            let finalLowPrem = sumLowPrem / count;
+            let finalAvgPrem = sumAvgPrem / count;
+            
+            // 簡單判斷：如果溢價率算出來 > 50 (可能是把價格當溢價了)，就減 100
+            if (finalLowPrem > 50) finalLowPrem -= 100;
+            if (finalAvgPrem > 50) finalAvgPrem -= 100;
 
-            // 修正：如果算出平均是 105，轉為 5
-            if (finalLow > 50) finalLow -= 100;
-            if (finalAvg > 50) finalAvg -= 100;
-
-            return { low: finalLow, avg: finalAvg };
+            return {
+                '平均最低得標': sumLowPrice / count,
+                '平均最低溢價': finalLowPrem,
+                '平均得標價': sumAvgPrice / count,
+                '平均溢價': finalAvgPrem,
+                '樣本數': count
+            };
         }
 
         // ==========================================
-        // 4. 獲取統計數據 (含防呆)
+        // 4. 獲取統計數據 (統一介面)
         // ==========================================
         function getStatsSmart(category, val) {
-            // 1. 特殊處理發行券商 (動態計算)
+            // 1. 發行券商 (動態計算)
             if (category === '發行券商') {
-                return getDynamicBrokerStats(val);
+                const dyn = getDynamicBrokerStats(val);
+                if (dyn) return { low: dyn['平均最低溢價'], avg: dyn['平均溢價'] };
+                return { low: 0, avg: 0 };
             }
 
             // 2. 一般維度
@@ -404,7 +413,7 @@
                 if (key) data = statistics['維度統計'][category][key];
             }
 
-            // 3. 強制防呆：確保回傳數值，若無資料則為 0
+            // 3. 強制防呆
             let low = 0, avg = 0;
             if (data) {
                 low = safeFloat(data['平均最低溢價']);
@@ -415,7 +424,7 @@
         }
 
         // ==========================================
-        // 5. 卡片生成
+        // 5. 卡片生成 (資訊全揭露)
         // ==========================================
         function generateStandardCard(data, titleOverride=null) {
             if (!data) return `<div class="stat-row" style="color:#999;">查無此條件的歷史統計</div>`;
@@ -424,7 +433,7 @@
             const sampleCount = data['樣本數'] || 0;
             const sampleText = `歷史樣本: ${sampleCount} 檔 ${percentage}`;
             
-            const val = (v, suffix='') => (v !== undefined && v !== null && v !== '') ? `${safeFloat(v).toFixed(2)}${suffix}` : '-';
+            const val = (v, suffix='') => (v !== undefined && v !== null && v !== '' && v !== 0) ? `${safeFloat(v).toFixed(2)}${suffix}` : '-';
             
             let html = `
                 <div class="stats-header">📊 ${titleOverride || '歷史統計'}</div>
@@ -444,30 +453,30 @@
                 </div>
             `;
 
-            if (data['平均掛牌最高'] || data['平均掛牌最低']) {
-                const h = safeFloat(data['平均掛牌最高']);
-                const l = safeFloat(data['平均掛牌最低']);
-                const amp = l > 0 ? ((h - l) / l * 100).toFixed(1) : '-';
-                
-                html += `
-                    <div style="border-top:1px dashed #ccc; padding-top:8px;">
-                        <div class="stat-row">
-                            <span class="stat-label">📈 掛牌最高:</span> <span class="stat-value">${val(h)}</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">📉 掛牌最低:</span> <span class="stat-value">${val(l)}</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label" style="color:#E91E63;">⚡ 平均振幅:</span> <span class="stat-value" style="color:#E91E63;">${amp}%</span>
-                        </div>
+            // 即使是 0 也顯示欄位，只是值為 '-'
+            const h = safeFloat(data['平均掛牌最高']);
+            const l = safeFloat(data['平均掛牌最低']);
+            const amp = l > 0 ? ((h - l) / l * 100).toFixed(1) : 0;
+            
+            html += `
+                <div style="border-top:1px dashed #ccc; padding-top:8px;">
+                    <div class="stat-row">
+                        <span class="stat-label">📈 掛牌最高:</span> <span class="stat-value">${val(h)}</span>
                     </div>
-                `;
-            }
+                    <div class="stat-row">
+                        <span class="stat-label">📉 掛牌最低:</span> <span class="stat-value">${val(l)}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label" style="color:#E91E63;">⚡ 平均振幅:</span> <span class="stat-value" style="color:#E91E63;">${amp > 0 ? amp + '%' : '-'}</span>
+                    </div>
+                </div>
+            `;
+            
             return html;
         }
 
         // ==========================================
-        // 6. 介面初始化
+        // 6. 介面初始化與綁定
         // ==========================================
         function initializeUI() {
             document.getElementById('headerSubtitle').textContent = `Rex大叔的168台股投資教室 | 整合${Object.keys(cbDatabase).length}檔CB完整資料庫`;
@@ -535,23 +544,16 @@
                             key = v<=3?'2-3分':v<=5?'4-5分':v<=7?'6-7分':'8-9分';
                         }
                         
-                        // 特殊處理券商顯示
+                        let data = null;
                         if (cat === '發行券商') {
-                            const stats = getDynamicBrokerStats(val);
-                            let html = `<div class="stats-header">📊 歷史統計 (${val})</div>`;
-                            if (stats.low !== 0) {
-                                html += `
-                                    <div class="stat-row">📉 平均最低溢價: ${stats.low.toFixed(2)}%</div>
-                                    <div class="stat-row">⚖️ 平均得標溢價: ${stats.avg.toFixed(2)}%</div>`;
-                            } else {
-                                html += `<div class="stat-row" style="color:#999;">暫無該券商競拍統計數據</div>`;
-                            }
-                            show(id+'Info', html);
+                            data = getDynamicBrokerStats(val);
                         } else {
                             const catObj = statistics['維度統計'][cat];
-                            const data = catObj ? catObj[key] : null;
-                            show(id+'Info', generateStandardCard(data, key ? `歷史統計 (${key})` : null));
+                            data = catObj ? catObj[key] : null;
                         }
+                        
+                        // 產生卡片 (包含缺失資料的處理)
+                        show(id+'Info', generateStandardCard(data, key ? `歷史統計 (${key})` : (cat === '發行券商' ? `歷史統計 (${val})` : null)));
                         
                         if (cat === '轉換價' || cat === '信評') updateSmartReminders();
                     }
@@ -613,7 +615,6 @@
                 const cases = similarCases.filter(item => new Date(item['開標日期']) >= cutoff);
                 
                 if (cases.length > 0) {
-                    // 防呆計算
                     const avgMult = (cases.reduce((s, i) => s + safeFloat(i['投標倍數']), 0) / cases.length).toFixed(2);
                     const avgPrem = (cases.reduce((s, i) => s + (safeFloat(i['平均溢價']) || safeFloat(i['最低溢價'])), 0) / cases.length * 100).toFixed(2);
                     
@@ -697,16 +698,16 @@
             }
             stats.market = { low: mLow, avg: mAvg };
 
-            // === 核心：權重分配 ===
+            // 權重分配
             const w = { 
-                industry: 0.25,    // 產業 (25%)
-                guarantee: 0.20,   // 擔保 (20%)
-                theoretical: 0.20, // 理論價 (20%)
-                size: 0.10,        // 規模 (10%)
-                rating: 0.10,      // 信評 (10%)
-                capital: 0.05,     // 股本 (5%)
-                years: 0.05,       // 年期 (5%)
-                conversion: 0.05   // 轉換價 (5%)
+                industry: 0.25,
+                guarantee: 0.20,
+                theoretical: 0.20,
+                size: 0.10,
+                rating: 0.10,
+                capital: 0.05,
+                years: 0.05,
+                conversion: 0.05
             };
 
             let comp = 
@@ -763,18 +764,16 @@
             const s = result.stats;
             const w = result.weights;
 
-            // 計算歷史平均合計
-            const totalHistLow = 
+            // 計算歷史最低與歷史平均的「總平均值」 (Arithmetic Mean)
+            const totalHistLow = (
                 s.industry.low + s.guarantee.low + s.theoretical.low + s.size.low + 
-                s.rating.low + s.capital.low + s.years.low + s.conversion.low;
+                s.rating.low + s.capital.low + s.years.low + s.conversion.low
+            ) / 8;
             
-            const totalHistAvg = 
+            const totalHistAvg = (
                 s.industry.avg + s.guarantee.avg + s.theoretical.avg + s.size.avg + 
-                s.rating.avg + s.capital.avg + s.years.avg + s.conversion.avg;
-
-            // 避免單純加總無意義，這裡我們顯示 "-" 或者如果要顯示所有歷史平均的平均，需要除以8
-            // 但用戶要求「合計」，通常權重表是看加權後的合計。
-            // 這裡將歷史欄位的合計設為 "-" 避免誤導，重點在加權後。
+                s.rating.avg + s.capital.avg + s.years.avg + s.conversion.avg
+            ) / 8;
 
             const tableHtml = `
                 <table class="data-table">
@@ -788,11 +787,11 @@
                         <tr><td>轉換價格</td><td>${result.ranges.conversion}</td><td>${fmt(s.conversion.low)}</td><td>${fmt(s.conversion.avg)}</td><td>5%</td><td>${fmt(s.conversion.low * w.conv)}</td><td>${fmt(s.conversion.avg * w.conv)}</td></tr>
                         <tr><td>發行年期</td><td>${result.inputData.years}年</td><td>${fmt(s.years.low)}</td><td>${fmt(s.years.avg)}</td><td>5%</td><td>${fmt(s.years.low * w.yr)}</td><td>${fmt(s.years.avg * w.yr)}</td></tr>
                         <tr><td>股本大小</td><td>${result.ranges.capital}</td><td>${fmt(s.capital.low)}</td><td>${fmt(s.capital.avg)}</td><td>5%</td><td>${fmt(s.capital.low * w.cap)}</td><td>${fmt(s.capital.avg * w.cap)}</td></tr>
-                        <tr style="background-color: #f5f5f5; font-size:12px; color:#666;"><td>市場氛圍(參)</td><td>近3個月</td><td>${fmt(s.market.low)}</td><td>${fmt(s.market.avg)}</td><td>-</td><td>-</td><td>-</td></tr>
+                        <tr style="background-color: #f5f5f5; color:#666;"><td>市場氛圍(參)</td><td>近3個月</td><td>${fmt(s.market.low)}</td><td>${fmt(s.market.avg)}</td><td>-</td><td>-</td><td>-</td></tr>
                         <tr style="background-color: #fffde7; border-top: 2px solid #FF9800; font-weight:bold;">
                             <td colspan="2" style="text-align:right; padding-right:20px;">總計 (Total)</td>
-                            <td>-</td>
-                            <td>-</td>
+                            <td>${fmt(totalHistLow)}</td>
+                            <td>${fmt(totalHistAvg)}</td>
                             <td>100%</td>
                             <td style="color:#d32f2f;">${result.comprehensivePremium}%</td>
                             <td style="color:#d32f2f;">${result.comprehensiveAvgPremium}%</td>
@@ -804,7 +803,7 @@
             const rexCommentary = generateRexCommentary(result);
 
             resultDiv.innerHTML = `
-                <div class="result-header"><h2>${result.cbName}</h2><div class="subtitle">資料驅動AI評估結果 (V3.17)</div></div>
+                <div class="result-header"><h2>${result.cbName}</h2><div class="subtitle">資料驅動AI評估結果 (V3.18)</div></div>
                 <div class="detail-section"><h3>📊 理論價格計算</h3><div style="text-align:center; padding:20px; background:#f8f9fa; border-radius:10px;"><div style="font-size:48px; font-weight:bold; color:#667eea;">${result.theoreticalPrice} 元</div><div style="color:#999;">= 股價 ${result.inputData.stockPrice} ÷ 轉價 ${result.inputData.conversionPrice} × 100</div></div></div>
                 <div class="detail-section"><h3>🔍 溢價率分解分析表</h3>${tableHtml}</div>
                 ${rexCommentary}
