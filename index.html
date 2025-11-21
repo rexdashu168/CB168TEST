@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI智能可轉債競拍系統 v3.15 (區間匹配增強版) - Rex大叔</title>
+    <title>AI智能可轉債競拍系統 v3.16 (戰略權重優化版) - Rex大叔</title>
     
     <style>
-        /* ================= 風格設定 (維持原樣) ================= */
+        /* ================= 風格設定 ================= */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Microsoft JhengHei', 'Segoe UI', Arial, sans-serif;
@@ -21,7 +21,7 @@
         }
         .header h1 { color: #667eea; font-size: 32px; margin-bottom: 10px; }
         .header .subtitle { color: #666; font-size: 16px; }
-        .version-badge { display: inline-block; background: #E91E63; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
+        .version-badge { display: inline-block; background: #FF9800; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
 
         .evaluation-container { display: grid; grid-template-columns: 450px 1fr; gap: 20px; }
         
@@ -39,9 +39,8 @@
             width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; transition: border-color 0.3s;
         }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
-        .form-group small { display: block; color: #999; font-size: 12px; margin-top: 5px; }
-
-        /* 資訊框樣式優化 */
+        
+        /* 資訊框樣式 */
         .info-box {
             background: #e8f5e9; padding: 15px; border-radius: 8px;
             border-left: 5px solid #4CAF50; margin-top: 10px; display: none;
@@ -88,20 +87,32 @@
         .strategy-card.aggressive { border-color: #f44336; background: #fff0f0; }
         .strategy-card .price { font-size: 32px; font-weight: bold; margin: 20px 0; }
 
+        /* 表格優化 */
         .data-table {
             width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         .data-table th {
-            background-color: #01579b; color: white; padding: 12px 8px;
-            text-align: center; font-weight: normal; border: 1px solid #01457b;
+            background-color: #1A237E; color: white; padding: 15px 10px;
+            text-align: center; font-weight: bold; border: 1px solid #0d1b5e;
         }
-        .data-table td { padding: 10px 8px; text-align: center; border: 1px solid #e0e0e0; color: #333; }
-        .data-table tr:nth-child(even) { background-color: #f5f5f5; }
-        .data-table tr:hover { background-color: #e3f2fd; }
+        .data-table td { padding: 12px 10px; text-align: center; border: 1px solid #e0e0e0; color: #333; }
+        .data-table tr:nth-child(even) { background-color: #f8f9fa; }
+        .data-table tr:hover { background-color: #e8eaf6; }
         .val-pos { color: #d32f2f; font-weight: bold; }
         .val-neg { color: #388e3c; font-weight: bold; }
         .val-neu { color: #333; }
+        
+        /* Rex大叔分析區塊 */
+        .rex-analysis {
+            background: linear-gradient(to right, #fff3e0, #ffe0b2);
+            border-left: 6px solid #ff9800;
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        .rex-title { font-size: 20px; font-weight: bold; color: #e65100; margin-bottom: 15px; display: flex; align-items: center; }
+        .rex-content { color: #5d4037; line-height: 1.8; font-size: 15px; }
 
         @media (max-width: 1200px) {
             .evaluation-container { grid-template-columns: 1fr; }
@@ -117,7 +128,7 @@
     
     <div class="container" style="display: none;">
         <div class="header">
-            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.15</span></h1>
+            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.16</span></h1>
             <p class="subtitle" id="headerSubtitle">載入中...</p>
         </div>
 
@@ -241,7 +252,7 @@
         let auctionRawData = null;
 
         // ==========================================
-        // 1. 資料讀取 (不變)
+        // 1. 系統核心：資料讀取
         // ==========================================
         async function loadStatistics() {
             const loadingDiv = document.getElementById('loading');
@@ -292,35 +303,29 @@
         }
 
         // ==========================================
-        // 2. 智能區間匹配 (核心邏輯升級)
+        // 2. 智能區間匹配
         // ==========================================
         function findBestRangeKey(category, value) {
             if (!statistics || !statistics['維度統計'] || !statistics['維度統計'][category]) return null;
             const keys = Object.keys(statistics['維度統計'][category]);
             
             for (let key of keys) {
-                // 1. 清理單位 (億, 元, 年期, 年) 但保留比較符號和數字
-                // 用正則表達式移除中文，但保留 > < - ~ . 和數字
                 let rawKey = key.replace(/億|元|年期|年/g, '').trim();
                 
-                // 2. 處理 "100~120" 或 "100-120"
                 if (rawKey.includes('~') || rawKey.includes('-')) {
                     let parts = rawKey.split(/[~-]/).map(s => parseFloat(s.trim()));
                     if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
                         if (value >= parts[0] && value < parts[1]) return key;
                     }
                 }
-                // 3. 處理 "以下", "未滿", "<"
                 else if (rawKey.includes('以下') || rawKey.includes('未滿') || rawKey.startsWith('<')) {
                     let limit = parseFloat(rawKey.replace(/以下|未滿|<|<=/g, '').trim());
-                    if (!isNaN(limit) && value < limit) return key; // 寬鬆判定，包含邊界也沒關係
+                    if (!isNaN(limit) && value < limit) return key;
                 }
-                // 4. 處理 "以上", "超過", ">"
                 else if (rawKey.includes('以上') || rawKey.includes('超過') || rawKey.startsWith('>')) {
                     let limit = parseFloat(rawKey.replace(/以上|超過|>|>=/g, '').trim());
                     if (!isNaN(limit) && value >= limit) return key;
                 }
-                // 5. 處理純數字 (如年期 "3")
                 else {
                     let num = parseFloat(rawKey);
                     if (!isNaN(num) && value === num) return key;
@@ -330,7 +335,7 @@
         }
 
         // ==========================================
-        // 3. 卡片生成 (強制顯示競拍數據)
+        // 3. 卡片生成
         // ==========================================
         function generateStandardCard(data, titleOverride=null) {
             if (!data) return `<div class="stat-row" style="color:#999;">查無此條件的歷史統計</div>`;
@@ -339,7 +344,6 @@
             const sampleCount = data['樣本數'] || 0;
             const sampleText = `歷史樣本: ${sampleCount} 檔 ${percentage}`;
             
-            // 數值格式化 helper
             const val = (v, suffix='') => (v !== undefined && v !== null && v !== '') ? `${Number(v).toFixed(2)}${suffix}` : '-';
             
             let html = `
@@ -347,7 +351,6 @@
                 <div class="stat-row" style="color:#555; font-weight:bold; margin-bottom:8px;">${sampleText}</div>
             `;
 
-            // 強制顯示競拍數據區塊 (即使資料庫缺漏也要顯示欄位)
             html += `
                 <div style="background:#f1f8e9; padding:8px; border-radius:5px; margin-bottom:8px;">
                     <div class="stat-row">
@@ -361,7 +364,6 @@
                 </div>
             `;
 
-            // 顯示掛牌數據 (發行條件/轉換價也需要這個)
             if (data['平均掛牌最高'] || data['平均掛牌最低']) {
                 const h = parseFloat(data['平均掛牌最高']) || 0;
                 const l = parseFloat(data['平均掛牌最低']) || 0;
@@ -385,7 +387,7 @@
         }
 
         // ==========================================
-        // 4. 介面初始化與綁定
+        // 4. 介面初始化
         // ==========================================
         function initializeUI() {
             document.getElementById('headerSubtitle').textContent = `Rex大叔的168台股投資教室 | 整合${Object.keys(cbDatabase).length}檔CB完整資料庫`;
@@ -455,8 +457,6 @@
                         
                         const catObj = statistics['維度統計'][cat];
                         const data = catObj ? catObj[key] : null;
-                        
-                        // 這裡會根據 key (例如 ">200元") 抓到的資料生成卡片
                         show(id+'Info', generateStandardCard(data, key ? `歷史統計 (${key})` : null));
                         
                         if (cat === '轉換價' || cat === '信評') updateSmartReminders();
@@ -555,6 +555,38 @@
             };
         }
 
+        function generateRexCommentary(result) {
+            const prem = parseFloat(result.comprehensivePremium);
+            const theo = parseFloat(result.theoreticalPrice);
+            let comment = "";
+            let strategy = "";
+
+            if (prem >= 15) {
+                comment = "🔥 **市場過熱警示**：目前評估溢價率極高，顯示市場對該題材（" + result.inputData.industry + "）極度追捧。需注意理論價格是否已在高檔。";
+                strategy = "建議採**保守策略**，或僅以小量資金參與，避免追高風險。";
+            } else if (prem >= 8) {
+                comment = "📈 **多頭趨勢明確**：綜合溢價率顯示市場情緒樂觀，產業與發行條件均具吸引力。";
+                strategy = "可採**積極策略**，但需留意轉換價（" + result.inputData.conversionPrice + "）是否具備攻擊性。";
+            } else if (prem >= 3) {
+                comment = "⚖️ **區間合理震盪**：目前的溢價率處於歷史合理區間，市場看法中性偏多。";
+                strategy = "建議採**平衡策略**，以理論得標價為基準，上下微調 1~2 元進行投標。";
+            } else {
+                comment = "🧊 **防禦價值浮現**：目前溢價率低於平均水準，可能是市場忽略的冷門優質股，或理論價已偏低。";
+                strategy = "具備**高安全邊際**，適合長期持有或尋求套利機會，建議在此區間佈局。";
+            }
+
+            return `
+                <div class="rex-analysis">
+                    <div class="rex-title">🧢 Rex大叔 智囊戰略分析</div>
+                    <div class="rex-content">
+                        <p>${comment}</p>
+                        <p style="margin-top:10px;"><strong>💡 操作建議：</strong>${strategy}</p>
+                        <p style="margin-top:10px; font-size:13px; color:#795548;">(本分析基於歷史大數據運算，僅供參考，投資請自負盈虧)</p>
+                    </div>
+                </div>
+            `;
+        }
+
         function calculateEvaluation(data) {
             const theoPrice = (data.stockPrice / data.conversionPrice) * 100;
             const stats = {};
@@ -583,16 +615,38 @@
             }
             stats.market = { low: mLow, avg: mAvg };
 
-            const w = { theo: 0.3, guar: 0.2, ind: 0.15, size: 0.1, rate: 0.1, conv: 0.08, yr: 0.05, cap: 0.02 };
+            // === 核心：重新分配權重 ===
+            const w = { 
+                industry: 0.25,    // 產業最重要 (25%)
+                guarantee: 0.20,   // 擔保次之 (20%)
+                theoretical: 0.20, // 理論價位調整順序 (20%)
+                size: 0.10,        // 發行規模 (10%)
+                rating: 0.10,      // 信評 (10%)
+                capital: 0.05,     // 股本 (5%)
+                years: 0.05,       // 年期 (5%)
+                conversion: 0.05   // 轉換價 (5%)
+            };
+
             let comp = 
-                stats.theoretical.low * w.theo +
-                stats.guarantee.low * w.guar +
-                stats.industry.low * w.ind +
+                stats.industry.low * w.industry +
+                stats.guarantee.low * w.guarantee +
+                stats.theoretical.low * w.theoretical +
                 stats.size.low * w.size +
-                stats.rating.low * w.rate +
-                stats.conversion.low * w.conv +
-                stats.years.low * w.yr +
-                stats.capital.low * w.cap;
+                stats.rating.low * w.rating +
+                stats.capital.low * w.capital +
+                stats.years.low * w.years +
+                stats.conversion.low * w.conversion;
+
+            // 計算加權後的「平均溢價」總計 (給表格顯示用)
+            let compAvg = 
+                stats.industry.avg * w.industry +
+                stats.guarantee.avg * w.guarantee +
+                stats.theoretical.avg * w.theoretical +
+                stats.size.avg * w.size +
+                stats.rating.avg * w.rating +
+                stats.capital.avg * w.capital +
+                stats.years.avg * w.years +
+                stats.conversion.avg * w.conversion;
 
             const ranges = {
                 theoretical: findBestRangeKey('理論價', theoPrice) || '-',
@@ -605,7 +659,9 @@
                 cbName: data.cbName,
                 theoreticalPrice: theoPrice.toFixed(2),
                 stats: stats,
+                weights: w,
                 comprehensivePremium: comp.toFixed(2),
+                comprehensiveAvgPremium: compAvg.toFixed(2),
                 theoreticalBidPrice: (theoPrice * (1 + comp/100)).toFixed(2),
                 bidPrices: {
                     conservative: (theoPrice * (1 + comp/100) * 0.95).toFixed(2),
@@ -624,30 +680,38 @@
             
             const fmt = (v) => `<span class="${v>0?'val-pos':v<0?'val-neg':'val-neu'}">${v.toFixed(2)}%</span>`;
             const s = result.stats;
-            const w = { theo: 0.3, guar: 0.2, ind: 0.15, size: 0.1, rate: 0.1, conv: 0.08, yr: 0.05, cap: 0.02 };
+            const w = result.weights;
 
             const tableHtml = `
                 <table class="data-table">
-                    <thead><tr><th>維度</th><th>條件區間</th><th>歷史最低溢價</th><th>歷史平均溢價</th><th>權重</th><th>加權結果</th></tr></thead>
+                    <thead><tr><th>維度</th><th>條件區間</th><th>歷史最低溢價</th><th>歷史平均溢價</th><th>權重</th><th>最低溢價加權</th><th>平均溢價加權</th></tr></thead>
                     <tbody>
-                        <tr><td>理論價位</td><td>${result.ranges.theoretical}</td><td>${fmt(s.theoretical.low)}</td><td>${fmt(s.theoretical.avg)}</td><td>30%</td><td>${fmt(s.theoretical.low * w.theo)}</td></tr>
-                        <tr><td>擔保情況</td><td>${result.inputData.guarantee}</td><td>${fmt(s.guarantee.low)}</td><td>${fmt(s.guarantee.avg)}</td><td>20%</td><td>${fmt(s.guarantee.low * w.guar)}</td></tr>
-                        <tr><td>產業分類</td><td>${result.inputData.industry}</td><td>${fmt(s.industry.low)}</td><td>${fmt(s.industry.avg)}</td><td>15%</td><td>${fmt(s.industry.low * w.ind)}</td></tr>
-                        <tr><td>發行規模</td><td>${result.ranges.size}</td><td>${fmt(s.size.low)}</td><td>${fmt(s.size.avg)}</td><td>10%</td><td>${fmt(s.size.low * w.size)}</td></tr>
-                        <tr><td>信用評等</td><td>${result.inputData.ratingDisplay}</td><td>${fmt(s.rating.low)}</td><td>${fmt(s.rating.avg)}</td><td>10%</td><td>${fmt(s.rating.low * w.rate)}</td></tr>
-                        <tr><td>轉換價格</td><td>${result.ranges.conversion}</td><td>${fmt(s.conversion.low)}</td><td>${fmt(s.conversion.avg)}</td><td>8%</td><td>${fmt(s.conversion.low * w.conv)}</td></tr>
-                        <tr><td>發行年期</td><td>${result.inputData.years}年</td><td>${fmt(s.years.low)}</td><td>${fmt(s.years.avg)}</td><td>5%</td><td>${fmt(s.years.low * w.yr)}</td></tr>
-                        <tr><td>股本大小</td><td>${result.ranges.capital}</td><td>${fmt(s.capital.low)}</td><td>${fmt(s.capital.avg)}</td><td>2%</td><td>${fmt(s.capital.low * w.cap)}</td></tr>
-                        <tr style="background-color: #fff3e0;"><td><strong>市場氛圍</strong></td><td>近3個月</td><td>${fmt(s.market.low)}</td><td>${fmt(s.market.avg)}</td><td>-</td><td>參考</td></tr>
-                        <tr style="background-color: #e3f2fd; border-top: 2px solid #1976D2;"><td colspan="5" style="text-align:right; font-weight:bold; color:#0d47a1; padding-right:20px;">綜合最低溢價率預估</td><td style="font-weight:bold; font-size:16px; color:#d32f2f;">${result.comprehensivePremium}%</td></tr>
+                        <tr><td>產業分類</td><td>${result.inputData.industry}</td><td>${fmt(s.industry.low)}</td><td>${fmt(s.industry.avg)}</td><td>25%</td><td>${fmt(s.industry.low * w.industry)}</td><td>${fmt(s.industry.avg * w.industry)}</td></tr>
+                        <tr><td>擔保情況</td><td>${result.inputData.guarantee}</td><td>${fmt(s.guarantee.low)}</td><td>${fmt(s.guarantee.avg)}</td><td>20%</td><td>${fmt(s.guarantee.low * w.guar)}</td><td>${fmt(s.guarantee.avg * w.guar)}</td></tr>
+                        <tr><td>理論價位</td><td>${result.ranges.theoretical}</td><td>${fmt(s.theoretical.low)}</td><td>${fmt(s.theoretical.avg)}</td><td>20%</td><td>${fmt(s.theoretical.low * w.theo)}</td><td>${fmt(s.theoretical.avg * w.theo)}</td></tr>
+                        <tr><td>發行規模</td><td>${result.ranges.size}</td><td>${fmt(s.size.low)}</td><td>${fmt(s.size.avg)}</td><td>10%</td><td>${fmt(s.size.low * w.size)}</td><td>${fmt(s.size.avg * w.size)}</td></tr>
+                        <tr><td>信用評等</td><td>${result.inputData.ratingDisplay}</td><td>${fmt(s.rating.low)}</td><td>${fmt(s.rating.avg)}</td><td>10%</td><td>${fmt(s.rating.low * w.rate)}</td><td>${fmt(s.rating.avg * w.rate)}</td></tr>
+                        <tr><td>轉換價格</td><td>${result.ranges.conversion}</td><td>${fmt(s.conversion.low)}</td><td>${fmt(s.conversion.avg)}</td><td>5%</td><td>${fmt(s.conversion.low * w.conv)}</td><td>${fmt(s.conversion.avg * w.conv)}</td></tr>
+                        <tr><td>發行年期</td><td>${result.inputData.years}年</td><td>${fmt(s.years.low)}</td><td>${fmt(s.years.avg)}</td><td>5%</td><td>${fmt(s.years.low * w.yr)}</td><td>${fmt(s.years.avg * w.yr)}</td></tr>
+                        <tr><td>股本大小</td><td>${result.ranges.capital}</td><td>${fmt(s.capital.low)}</td><td>${fmt(s.capital.avg)}</td><td>5%</td><td>${fmt(s.capital.low * w.cap)}</td><td>${fmt(s.capital.avg * w.cap)}</td></tr>
+                        <tr style="background-color: #fffde7; border-top: 2px solid #FF9800; font-weight:bold;">
+                            <td colspan="4" style="text-align:right; padding-right:20px;">總計 (Total)</td>
+                            <td>100%</td>
+                            <td style="color:#d32f2f;">${result.comprehensivePremium}%</td>
+                            <td style="color:#d32f2f;">${result.comprehensiveAvgPremium}%</td>
+                        </tr>
+                        <tr style="background-color: #f5f5f5; font-size:12px; color:#666;"><td>市場氛圍(參)</td><td>近3個月</td><td>${fmt(s.market.low)}</td><td>${fmt(s.market.avg)}</td><td>-</td><td>-</td><td>-</td></tr>
                     </tbody>
                 </table>
             `;
 
+            const rexCommentary = generateRexCommentary(result);
+
             resultDiv.innerHTML = `
-                <div class="result-header"><h2>${result.cbName}</h2><div class="subtitle">資料驅動AI評估結果 (V3.15)</div></div>
+                <div class="result-header"><h2>${result.cbName}</h2><div class="subtitle">資料驅動AI評估結果 (V3.16)</div></div>
                 <div class="detail-section"><h3>📊 理論價格計算</h3><div style="text-align:center; padding:20px; background:#f8f9fa; border-radius:10px;"><div style="font-size:48px; font-weight:bold; color:#667eea;">${result.theoreticalPrice} 元</div><div style="color:#999;">= 股價 ${result.inputData.stockPrice} ÷ 轉價 ${result.inputData.conversionPrice} × 100</div></div></div>
                 <div class="detail-section"><h3>🔍 溢價率分解分析表</h3>${tableHtml}</div>
+                ${rexCommentary}
                 <div class="detail-section"><h3>💡 AI投標價格建議</h3><div class="price-grid"><div class="strategy-card conservative"><h4>🛡️ 保守策略</h4><div class="price">${result.bidPrices.conservative}</div></div><div class="strategy-card balanced"><h4>⚖️ 平衡策略</h4><div class="price">${result.bidPrices.balanced}</div></div><div class="strategy-card aggressive"><h4>🚀 積極策略</h4><div class="price">${result.bidPrices.aggressive}</div></div></div></div>
                 <div style="text-align:center; margin-top:30px;"><button onclick="location.reload()" style="padding:15px 40px; background:#667eea; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">🔄 重新評估</button></div>
             `;
