@@ -3,92 +3,220 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rex大叔 CB競拍數據分析工具 (修復版)</title>
+    <title>Rex大叔 CB競拍資料庫分析系統 (完整修復版)</title>
     <style>
-        body { font-family: "Microsoft JhengHei", Arial, sans-serif; background-color: #f4f4f9; margin: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1, h3 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
-        .section { margin-bottom: 30px; padding: 15px; background: #eef; border-radius: 5px; }
-        .input-group { margin-bottom: 15px; }
-        label { display: inline-block; width: 150px; font-weight: bold; }
-        input[type="text"], input[type="number"] { padding: 5px; border: 1px solid #ccc; border-radius: 4px; width: 200px; }
-        input[type="file"] { margin-top: 5px; }
-        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #0056b3; }
-        
-        /* 表格樣式 */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-        th { background-color: #007bff; color: white; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
-        
-        .status { color: green; font-weight: bold; margin-left: 10px; }
-        .error { color: red; font-weight: bold; margin-left: 10px; }
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+            --border-radius: 8px;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid var(--accent-color);
+            padding-bottom: 10px;
+            display: inline-block;
+            width: 100%;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            border-left: 5px solid var(--accent-color);
+            padding-left: 15px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        /* 控制面板區域 */
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            background-color: #eef2f5;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .input-group input[type="file"],
+        .input-group input[type="number"],
+        .input-group input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent-color);
+            outline: none;
+        }
+
+        .status-msg {
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .status-success { color: #27ae60; font-weight: bold; }
+        .status-error { color: #c0392b; font-weight: bold; }
+
+        .btn-analyze {
+            grid-column: 1 / -1;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-analyze:hover {
+            background-color: #2980b9;
+        }
+
+        /* 表格區域 */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border: 1px solid #eee;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px;
+            text-align: center;
+            white-space: nowrap;
+            font-weight: normal;
+        }
+
+        td {
+            padding: 12px;
+            border: 1px solid #eee;
+            text-align: center;
+            color: #444;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* 重點數據高亮 */
+        .highlight {
+            color: #e74c3c;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Rex大叔 CB競拍數據分析工具</h1>
+    <h1>Rex大叔 CB競拍資料庫分析系統</h1>
 
-    <div class="section">
-        <h3>1. 資料載入</h3>
+    <div class="control-panel">
         <div class="input-group">
-            <label>競拍資料庫 (JSON):</label>
-            <input type="file" id="fileAuctionData" accept=".json">
-            <span id="statusAuction" class="status"></span>
+            <label for="fileAuction">1. 上傳競拍資料庫 (JSON)</label>
+            <input type="file" id="fileAuction" accept=".json">
+            <div id="msgAuction" class="status-msg">等待上傳...</div>
         </div>
         <div class="input-group">
-            <label>掛牌資料庫 (JSON):</label>
-            <input type="file" id="fileNamesData" accept=".json">
-            <span id="statusNames" class="status"></span>
+            <label for="fileNames">2. 上傳掛牌資料庫 (JSON)</label>
+            <input type="file" id="fileNames" accept=".json">
+            <div id="msgNames" class="status-msg">等待上傳...</div>
         </div>
     </div>
 
-    <div class="section">
-        <h3>2. 參數輸入</h3>
+    <div class="control-panel">
         <div class="input-group">
-            <label>股本 (億):</label>
-            <input type="number" id="inputCapital" step="0.1" placeholder="例如: 10.5">
+            <label for="inCapital">查詢股本 (億元)</label>
+            <input type="number" id="inCapital" step="0.1" placeholder="輸入股本，例如: 15.5">
         </div>
         <div class="input-group">
-            <label>發行規模 (億):</label>
-            <input type="number" id="inputIssueSize" step="0.1" placeholder="例如: 5">
+            <label for="inBroker">查詢發行券商</label>
+            <input type="text" id="inBroker" placeholder="輸入券商名稱，例如: 凱基">
         </div>
         <div class="input-group">
-            <label>發行券商:</label>
-            <input type="text" id="inputBroker" placeholder="例如: 台新">
+            <label for="inSize">查詢發行規模 (億元)</label>
+            <input type="number" id="inSize" step="0.1" placeholder="輸入發行規模，例如: 10">
         </div>
-        <button onclick="runAnalysis()">開始分析</button>
+        <button class="btn-analyze" onclick="startAnalysis()">開始分析並補齊數據</button>
     </div>
 
-    <div id="resultsArea" style="display:none;">
+    <div id="resultArea" style="display: none;">
         
-        <div class="section">
-            <h3>1. 股本歷史統計 (依六區間)</h3>
+        <h2>1. 股本歷史統計 (依六大區間)</h2>
+        <div class="table-container">
             <table id="tableCapital">
                 <thead>
                     <tr>
-                        <th>區間範圍</th>
+                        <th>落點區間</th>
+                        <th>區間範圍 (億)</th>
                         <th>樣本數</th>
-                        <th>平均得標</th>
+                        <th>平均得標(元)</th>
                         <th>平均溢價(%)</th>
                         <th>區間掛牌最高</th>
                         <th>區間掛牌最低</th>
-                        <th>區間振幅</th>
+                        <th>區間最大振幅</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
             </table>
         </div>
 
-        <div class="section">
-            <h3>2. 發行券商歷史統計</h3>
+        <h2>2. 發行券商歷史統計</h2>
+        <div class="table-container">
             <table id="tableBroker">
                 <thead>
                     <tr>
                         <th>券商名稱</th>
-                        <th>歷史發行案件數</th>
+                        <th>歷史發行件數</th>
                         <th>歷史最低得標</th>
                         <th>平均得標</th>
                         <th>平均溢價(%)</th>
@@ -98,19 +226,20 @@
             </table>
         </div>
 
-        <div class="section">
-            <h3>3. 發行條件(規模)歷史統計</h3>
-            <table id="tableIssueSize">
+        <h2>3. 發行條件(規模)歷史統計 (依六大區間)</h2>
+        <div class="table-container">
+            <table id="tableSize">
                 <thead>
                     <tr>
-                        <th>區間範圍</th>
+                        <th>落點區間</th>
+                        <th>區間範圍 (億)</th>
                         <th>區間最低得標</th>
                         <th>區間最低溢價(%)</th>
                         <th>區間平均得標</th>
                         <th>區間平均溢價(%)</th>
                         <th>區間掛牌最高</th>
                         <th>區間掛牌最低</th>
-                        <th>區間振幅</th>
+                        <th>區間最大振幅</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -121,248 +250,320 @@
 </div>
 
 <script>
-    let auctionData = []; // 競拍原始資料
-    let namesData = {};   // 掛牌資料庫
+    // 全域變數儲存資料
+    let auctionDB = []; // 競拍資料陣列
+    let namesDB = {};   // 掛牌資料物件
 
-    // 讀取檔案邏輯
-    document.getElementById('fileAuctionData').addEventListener('change', function(e) {
+    // 監聽檔案上傳 - 競拍資料
+    document.getElementById('fileAuction').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function(evt) {
             try {
-                const json = JSON.parse(e.target.result);
-                // 兼容兩種格式：直接是陣列 或 包在 "競拍原始資料" 裡
-                if (json["競拍原始資料"]) {
-                    auctionData = json["競拍原始資料"];
-                } else if (Array.isArray(json)) {
-                    auctionData = json;
+                const data = JSON.parse(evt.target.result);
+                // 處理不同的 JSON 結構，確保抓到陣列
+                if (Array.isArray(data)) {
+                    auctionDB = data;
+                } else if (data['競拍原始資料']) {
+                    auctionDB = data['競拍原始資料'];
                 } else {
-                    throw new Error("格式不符");
+                    throw new Error('無法識別資料格式');
                 }
-                document.getElementById('statusAuction').innerText = "✅ 載入成功 (" + auctionData.length + " 筆)";
+                
+                document.getElementById('msgAuction').innerHTML = `<span class="status-success">✅ 已載入 ${auctionDB.length} 筆競拍資料</span>`;
             } catch (err) {
-                document.getElementById('statusAuction').innerText = "❌ 格式錯誤";
-                document.getElementById('statusAuction').className = "error";
+                console.error(err);
+                document.getElementById('msgAuction').innerHTML = `<span class="status-error">❌ 格式錯誤: ${err.message}</span>`;
             }
         };
         reader.readAsText(file);
     });
 
-    document.getElementById('fileNamesData').addEventListener('change', function(e) {
+    // 監聽檔案上傳 - 掛牌資料
+    document.getElementById('fileNames').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function(evt) {
             try {
-                const json = JSON.parse(e.target.result);
-                // 兼容：如果是 cb_data_integrated 格式，裡面可能有 "CB資料庫"
-                if (json["CB資料庫"]) {
-                    namesData = json["CB資料庫"];
+                const data = JSON.parse(evt.target.result);
+                // 處理不同的 JSON 結構
+                if (data['CB資料庫']) {
+                    namesDB = data['CB資料庫'];
                 } else {
-                    namesData = json; // 假設是 cb_names_database.json
+                    namesDB = data;
                 }
-                document.getElementById('statusNames').innerText = "✅ 載入成功";
+                // 計算筆數 (Object keys)
+                const count = Object.keys(namesDB).length;
+                document.getElementById('msgNames').innerHTML = `<span class="status-success">✅ 已載入 ${count} 筆掛牌資料</span>`;
             } catch (err) {
-                document.getElementById('statusNames').innerText = "❌ 格式錯誤";
-                document.getElementById('statusNames').className = "error";
+                console.error(err);
+                document.getElementById('msgNames').innerHTML = `<span class="status-error">❌ 格式錯誤: ${err.message}</span>`;
             }
         };
         reader.readAsText(file);
     });
 
-    // === 主要分析邏輯 ===
-    function runAnalysis() {
-        if (auctionData.length === 0) {
-            alert("請先上傳競拍資料庫！");
+    // ==========================================
+    // 核心分析函式
+    // ==========================================
+    function startAnalysis() {
+        // 1. 檢查資料是否載入
+        if (auctionDB.length === 0) {
+            alert("請先上傳「競拍資料庫」檔案！");
             return;
         }
 
-        const targetCap = parseFloat(document.getElementById('inputCapital').value) || 0;
-        const targetSize = parseFloat(document.getElementById('inputIssueSize').value) || 0;
-        const targetBroker = document.getElementById('inputBroker').value.trim();
+        // 2. 獲取輸入值
+        const valCapital = parseFloat(document.getElementById('inCapital').value);
+        const valBroker = document.getElementById('inBroker').value.trim();
+        const valSize = parseFloat(document.getElementById('inSize').value);
 
-        document.getElementById('resultsArea').style.display = 'block';
+        // 3. 顯示結果區塊
+        document.getElementById('resultArea').style.display = 'block';
 
-        // 執行三個運算
-        updateCapitalStats(targetCap);
-        updateBrokerStats(targetBroker);
-        updateIssueSizeStats(targetSize);
+        // 4. 執行各項分析
+        analyzeCapital(valCapital);
+        analyzeBroker(valBroker);
+        analyzeSize(valSize);
     }
 
-    // 1. 股本歷史統計邏輯 (含修復：平均數據、區間掛牌)
-    function updateCapitalStats(targetCap) {
+    // ------------------------------------------------
+    // 功能 1: 股本歷史統計 (修復：補上平均得標/溢價，與掛牌資料)
+    // ------------------------------------------------
+    function analyzeCapital(targetVal) {
         const tbody = document.querySelector('#tableCapital tbody');
-        tbody.innerHTML = "";
+        tbody.innerHTML = ''; // 清空
 
-        // 提取所有股本
-        const caps = auctionData.map(d => parseFloat(d['股本'] || 0)).filter(v => v > 0);
-        if (caps.length === 0) return;
-
-        const minCap = Math.min(...caps);
-        const maxCap = Math.max(...caps);
-        const range = maxCap - minCap;
-        const intervalSize = range / 6;
-
-        // 找出目標落在哪個區間
-        let targetIndex = Math.floor((targetCap - minCap) / intervalSize);
-        if (targetIndex < 0) targetIndex = 0;
-        if (targetIndex > 5) targetIndex = 5;
-
-        const rangeStart = minCap + (targetIndex * intervalSize);
-        const rangeEnd = rangeStart + intervalSize;
-
-        // 篩選該區間資料
-        const matchedCBs = auctionData.filter(d => {
-            const val = parseFloat(d['股本'] || 0);
-            return val >= rangeStart && val <= (targetIndex === 5 ? maxCap : rangeEnd);
-        });
-
-        // 統計
-        let totalWin = 0, totalPrem = 0, count = 0;
-        let highList = -Infinity, lowList = Infinity;
-
-        matchedCBs.forEach(d => {
-            // 處理競拍數據
-            const w = parseFloat(d['平均得標']);
-            const p = parseFloat(d['平均溢價']);
-            if (!isNaN(w) && w > 0) { totalWin += w; count++; }
-            if (!isNaN(p)) { totalPrem += p; } // 溢價可能是 0
-
-            // 處理掛牌數據 (需連結 namesData)
-            const code = d['CB代號'] || d['代號']; // 嘗試不同欄位名
-            if (code && namesData[code]) {
-                const h = parseFloat(namesData[code]['掛牌最高'] || 0);
-                const l = parseFloat(namesData[code]['掛牌最低'] || 0);
-                if (h > 0 && h > highList) highList = h;
-                if (l > 0 && l < lowList) lowList = l;
-            }
-        });
-
-        const row = `<tr>
-            <td>${rangeStart.toFixed(1)} - ${rangeEnd.toFixed(1)} 億</td>
-            <td>${matchedCBs.length}</td>
-            <td>${count > 0 ? (totalWin/count).toFixed(2) : "-"}</td>
-            <td>${count > 0 ? (totalPrem/count).toFixed(2) : "-"}</td>
-            <td>${highList !== -Infinity ? highList : "-"}</td>
-            <td>${lowList !== Infinity ? lowList : "-"}</td>
-            <td>${(highList !== -Infinity && lowList !== Infinity) ? (highList - lowList).toFixed(2) : "-"}</td>
-        </tr>`;
-        tbody.innerHTML = row;
-    }
-
-    // 2. 券商歷史統計邏輯 (含修復：最低得標空白、新增平均數據)
-    function updateBrokerStats(targetBroker) {
-        const tbody = document.querySelector('#tableBroker tbody');
-        tbody.innerHTML = "";
-
-        if (!targetBroker) return;
-
-        const brokerCBs = auctionData.filter(d => (d['發行券商'] || d['承銷券商']) === targetBroker);
-        
-        if (brokerCBs.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5'>查無此券商資料</td></tr>";
+        if (isNaN(targetVal)) {
+            tbody.innerHTML = '<tr><td colspan="8" style="color:red;">請輸入有效的股本數值</td></tr>';
             return;
         }
 
-        let totalWin = 0, totalPrem = 0, count = 0;
-        let minWin = Infinity;
+        // A. 取出所有有效的股本數據並排序
+        const values = auctionDB.map(d => parseFloat(d['股本'])).filter(v => !isNaN(v) && v > 0);
+        if (values.length === 0) return;
 
-        brokerCBs.forEach(d => {
-            const avgW = parseFloat(d['平均得標']);
-            const avgP = parseFloat(d['平均溢價']);
-            const lowW = parseFloat(d['最低得標']);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const range = max - min;
+        const step = range / 6; // 分成六個區間
 
+        // B. 計算目標落在哪個區間 (0~5)
+        let targetIdx = Math.floor((targetVal - min) / step);
+        if (targetIdx < 0) targetIdx = 0;
+        if (targetIdx > 5) targetIdx = 5;
+
+        // C. 定義該區間範圍
+        const rangeStart = min + (targetIdx * step);
+        const rangeEnd = rangeStart + step;
+
+        // D. 篩選資料
+        // 邏輯：只篩選落在這個區間內的 CB
+        const matched = auctionDB.filter(d => {
+            const v = parseFloat(d['股本']);
+            if (isNaN(v)) return false;
+            // 最後一個區間包含最大值
+            if (targetIdx === 5) return v >= rangeStart && v <= max;
+            return v >= rangeStart && v < rangeEnd;
+        });
+
+        // E. 統計數據 (補上平均得標、平均溢價、掛牌高低)
+        let sumWinBid = 0;
+        let sumPremium = 0;
+        let count = 0;
+        let maxList = -Infinity;
+        let minList = Infinity;
+
+        matched.forEach(item => {
+            // 競拍數據
+            const w = parseFloat(item['平均得標']);
+            const p = parseFloat(item['平均溢價']);
+            
+            if (!isNaN(w) && w > 0) {
+                sumWinBid += w;
+                sumPremium += (isNaN(p) ? 0 : p);
+                count++;
+            }
+
+            // 掛牌數據 (從 namesDB 查找)
+            // 嘗試用 CB代號 查找
+            const code = item['CB代號'] || item['代號']; 
+            if (code && namesDB[code]) {
+                const h = parseFloat(namesDB[code]['掛牌最高']);
+                const l = parseFloat(namesDB[code]['掛牌最低']);
+                if (!isNaN(h) && h > 0) {
+                    if (h > maxList) maxList = h;
+                }
+                if (!isNaN(l) && l > 0) {
+                    if (l < minList) minList = l;
+                }
+            }
+        });
+
+        // F. 渲染表格
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="highlight">第 ${targetIdx + 1} 區間</td>
+            <td>${rangeStart.toFixed(1)} ~ ${rangeEnd.toFixed(1)}</td>
+            <td>${count}</td>
+            <td>${count > 0 ? (sumWinBid / count).toFixed(2) : '-'}</td>
+            <td>${count > 0 ? (sumPremium / count).toFixed(2) : '-'}</td>
+            <td>${maxList !== -Infinity ? maxList : '-'}</td>
+            <td>${minList !== Infinity ? minList : '-'}</td>
+            <td>${(maxList !== -Infinity && minList !== Infinity) ? (maxList - minList).toFixed(2) : '-'}</td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    // ------------------------------------------------
+    // 功能 2: 發行券商歷史統計 (修復：最低得標空白問題、補平均數據)
+    // ------------------------------------------------
+    function analyzeBroker(targetName) {
+        const tbody = document.querySelector('#tableBroker tbody');
+        tbody.innerHTML = ''; 
+
+        if (!targetName) {
+            tbody.innerHTML = '<tr><td colspan="5" style="color:gray;">請輸入券商名稱</td></tr>';
+            return;
+        }
+
+        // A. 篩選券商
+        const matched = auctionDB.filter(d => {
+            const b1 = d['發行券商'] || '';
+            const b2 = d['承銷券商'] || ''; // 有些資料欄位名可能不同
+            return b1.includes(targetName) || b2.includes(targetName);
+        });
+
+        if (matched.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5">查無此券商資料</td></tr>';
+            return;
+        }
+
+        // B. 統計數據
+        let minWinBid = Infinity;
+        let sumWinBid = 0;
+        let sumPremium = 0;
+        let count = 0;
+
+        matched.forEach(item => {
+            const lowW = parseFloat(item['最低得標']);
+            const avgW = parseFloat(item['平均得標']);
+            const avgP = parseFloat(item['平均溢價']);
+
+            // 修復最低得標：必須是有效數字且大於0
+            if (!isNaN(lowW) && lowW > 0) {
+                if (lowW < minWinBid) minWinBid = lowW;
+            }
+
+            // 計算平均
             if (!isNaN(avgW) && avgW > 0) {
-                totalWin += avgW;
+                sumWinBid += avgW;
+                sumPremium += (isNaN(avgP) ? 0 : avgP);
                 count++;
             }
-            if (!isNaN(avgP)) {
-                totalPrem += avgP;
-            }
-            // 修復：確保抓到數值最小的最低得標
-            if (!isNaN(lowW) && lowW > 0 && lowW < minWin) {
-                minWin = lowW;
-            }
         });
 
-        const row = `<tr>
-            <td>${targetBroker}</td>
-            <td>${brokerCBs.length}</td>
-            <td>${minWin !== Infinity ? minWin.toFixed(2) : "-"}</td>
-            <td>${count > 0 ? (totalWin/count).toFixed(2) : "-"}</td>
-            <td>${count > 0 ? (totalPrem/count).toFixed(2) : "-"}</td>
-        </tr>`;
-        tbody.innerHTML = row;
+        // C. 渲染
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${targetName}</td>
+            <td>${matched.length}</td>
+            <td class="highlight">${minWinBid !== Infinity ? minWinBid.toFixed(2) : '無資料'}</td>
+            <td>${count > 0 ? (sumWinBid / count).toFixed(2) : '-'}</td>
+            <td>${count > 0 ? (sumPremium / count).toFixed(2) : '-'}</td>
+        `;
+        tbody.appendChild(row);
     }
 
-    // 3. 發行條件(規模)歷史統計 (含新增：六區間、完整競拍與掛牌數據)
-    function updateIssueSizeStats(targetSize) {
-        const tbody = document.querySelector('#tableIssueSize tbody');
-        tbody.innerHTML = "";
+    // ------------------------------------------------
+    // 功能 3: 發行條件(規模)歷史統計 (補齊：區間最低/平均/掛牌)
+    // ------------------------------------------------
+    function analyzeSize(targetVal) {
+        const tbody = document.querySelector('#tableSize tbody');
+        tbody.innerHTML = '';
 
-        const sizes = auctionData.map(d => parseFloat(d['發行規模'] || 0)).filter(v => v > 0);
-        if (sizes.length === 0) return;
+        if (isNaN(targetVal)) {
+            tbody.innerHTML = '<tr><td colspan="9" style="color:red;">請輸入有效的發行規模</td></tr>';
+            return;
+        }
 
-        const minSize = Math.min(...sizes);
-        const maxSize = Math.max(...sizes);
-        const range = maxSize - minSize;
-        const intervalSize = range / 6;
+        // A. 取出所有規模並分區間
+        const values = auctionDB.map(d => parseFloat(d['發行規模'])).filter(v => !isNaN(v) && v > 0);
+        if (values.length === 0) return;
 
-        let targetIndex = Math.floor((targetSize - minSize) / intervalSize);
-        if (targetIndex < 0) targetIndex = 0;
-        if (targetIndex > 5) targetIndex = 5;
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const range = max - min;
+        const step = range / 6;
 
-        const rangeStart = minSize + (targetIndex * intervalSize);
-        const rangeEnd = rangeStart + intervalSize;
+        // B. 找出目標區間
+        let targetIdx = Math.floor((targetVal - min) / step);
+        if (targetIdx < 0) targetIdx = 0;
+        if (targetIdx > 5) targetIdx = 5;
 
-        const matchedCBs = auctionData.filter(d => {
-            const val = parseFloat(d['發行規模'] || 0);
-            return val >= rangeStart && val <= (targetIndex === 5 ? maxSize : rangeEnd);
+        const rangeStart = min + (targetIdx * step);
+        const rangeEnd = rangeStart + step;
+
+        // C. 篩選
+        const matched = auctionDB.filter(d => {
+            const v = parseFloat(d['發行規模']);
+            if (isNaN(v)) return false;
+            if (targetIdx === 5) return v >= rangeStart && v <= max;
+            return v >= rangeStart && v < rangeEnd;
         });
 
-        // 統計該區間的極值與平均
-        let intervalLowWin = Infinity, intervalLowPrem = Infinity;
-        let sumAvgWin = 0, sumAvgPrem = 0, count = 0;
-        let highList = -Infinity, lowList = Infinity;
+        // D. 統計 (最低得標/溢價 + 平均得標/溢價 + 掛牌)
+        let intervalMinWin = Infinity;
+        let intervalMinPrem = Infinity;
+        let sumWin = 0, sumPrem = 0, count = 0;
+        let maxList = -Infinity, minList = Infinity;
 
-        matchedCBs.forEach(d => {
-            const lw = parseFloat(d['最低得標']);
-            const lp = parseFloat(d['最低溢價']);
-            const aw = parseFloat(d['平均得標']);
-            const ap = parseFloat(d['平均溢價']);
+        matched.forEach(item => {
+            const lowW = parseFloat(item['最低得標']);
+            const lowP = parseFloat(item['最低溢價']);
+            const avgW = parseFloat(item['平均得標']);
+            const avgP = parseFloat(item['平均溢價']);
 
-            if (!isNaN(lw) && lw > 0 && lw < intervalLowWin) intervalLowWin = lw;
-            if (!isNaN(lp) && lp < intervalLowPrem) intervalLowPrem = lp; // 溢價可能為負或0，需注意
+            // 抓區間極值 (最低得標)
+            if (!isNaN(lowW) && lowW > 0 && lowW < intervalMinWin) intervalMinWin = lowW;
+            // 抓區間極值 (最低溢價 - 注意溢價可能為負或0，這裡假設有資料就算)
+            if (!isNaN(lowP) && lowP < intervalMinPrem) intervalMinPrem = lowP;
 
-            if (!isNaN(aw) && aw > 0) {
-                sumAvgWin += aw;
+            // 算平均
+            if (!isNaN(avgW) && avgW > 0) {
+                sumWin += avgW;
+                sumPrem += (isNaN(avgP) ? 0 : avgP);
                 count++;
             }
-            if (!isNaN(ap)) sumAvgPrem += ap;
 
-            // 掛牌
-            const code = d['CB代號'] || d['代號'];
-            if (code && namesData[code]) {
-                const h = parseFloat(namesData[code]['掛牌最高'] || 0);
-                const l = parseFloat(namesData[code]['掛牌最低'] || 0);
-                if (h > 0 && h > highList) highList = h;
-                if (l > 0 && l < lowList) lowList = l;
+            // 掛牌數據
+            const code = item['CB代號'] || item['代號'];
+            if (code && namesDB[code]) {
+                const h = parseFloat(namesDB[code]['掛牌最高']);
+                const l = parseFloat(namesDB[code]['掛牌最低']);
+                if (!isNaN(h) && h > 0 && h > maxList) maxList = h;
+                if (!isNaN(l) && l > 0 && l < minList) minList = l;
             }
         });
 
-        const row = `<tr>
-            <td>${rangeStart.toFixed(1)} - ${rangeEnd.toFixed(1)} 億</td>
-            <td>${intervalLowWin !== Infinity ? intervalLowWin.toFixed(2) : "-"}</td>
-            <td>${intervalLowPrem !== Infinity ? intervalLowPrem.toFixed(2) : "-"}</td>
-            <td>${count > 0 ? (sumAvgWin/count).toFixed(2) : "-"}</td>
-            <td>${count > 0 ? (sumAvgPrem/count).toFixed(2) : "-"}</td>
-            <td>${highList !== -Infinity ? highList : "-"}</td>
-            <td>${lowList !== Infinity ? lowList : "-"}</td>
-            <td>${(highList !== -Infinity && lowList !== Infinity) ? (highList - lowList).toFixed(2) : "-"}</td>
-        </tr>`;
-        tbody.innerHTML = row;
+        // E. 渲染
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="highlight">第 ${targetIdx + 1} 區間</td>
+            <td>${rangeStart.toFixed(1)} ~ ${rangeEnd.toFixed(1)}</td>
+            <td>${intervalMinWin !== Infinity ? intervalMinWin.toFixed(2) : '-'}</td>
+            <td>${intervalMinPrem !== Infinity ? intervalMinPrem.toFixed(2) : '-'}</td>
+            <td>${count > 0 ? (sumWin / count).toFixed(2) : '-'}</td>
+            <td>${count > 0 ? (sumPrem / count).toFixed(2) : '-'}</td>
+            <td>${maxList !== -Infinity ? maxList : '-'}</td>
+            <td>${minList !== Infinity ? minList : '-'}</td>
+            <td>${(maxList !== -Infinity && minList !== Infinity) ? (maxList - minList).toFixed(2) : '-'}</td>
+        `;
+        tbody.appendChild(row);
     }
+
 </script>
 
 </body>
