@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI智能可轉債競拍系統 v3.13 (雙軌數據修復版) - Rex大叔</title>
+    <title>AI智能可轉債競拍系統 v3.14 (檔名修正版) - Rex大叔</title>
     
     <style>
         /* ================= 風格設定 (維持原樣) ================= */
@@ -21,7 +21,7 @@
         }
         .header h1 { color: #667eea; font-size: 32px; margin-bottom: 10px; }
         .header .subtitle { color: #666; font-size: 16px; }
-        .version-badge { display: inline-block; background: #FF5722; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
+        .version-badge { display: inline-block; background: #4CAF50; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-left: 10px; }
 
         .evaluation-container { display: grid; grid-template-columns: 450px 1fr; gap: 20px; }
         
@@ -115,7 +115,7 @@
     
     <div class="container" style="display: none;">
         <div class="header">
-            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.13</span></h1>
+            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.14</span></h1>
             <p class="subtitle" id="headerSubtitle">載入中...</p>
         </div>
 
@@ -239,48 +239,43 @@
         let auctionRawData = null;
 
         // ==========================================
-        // 1. 系統核心：雙軌資料讀取 (修復 "資料載入失敗" 問題)
+        // 1. 系統核心：資料讀取 (檔名修正版)
         // ==========================================
         async function loadStatistics() {
             const loadingDiv = document.getElementById('loading');
             const detailDiv = document.getElementById('loading-detail');
             
             try {
-                // 同時讀取兩個檔案，並允許其中一個失敗而不崩潰
                 detailDiv.textContent = "正在同步讀取數據庫...";
                 
+                // 【關鍵修正】這裡的檔名改成 cb_data_integrated.json (去掉 _test)
                 const [resMain, resNames] = await Promise.all([
-                    fetch('cb_data_integrated_test.json').then(res => res.ok ? res.json() : null).catch(e => null),
+                    fetch('cb_data_integrated.json').then(res => res.ok ? res.json() : null).catch(e => null),
                     fetch('cb_names_database.json').then(res => res.ok ? res.json() : null).catch(e => null)
                 ]);
 
-                // 檢查主檔案
                 if (!resMain) {
-                    throw new Error("找不到主統計檔 (cb_data_integrated_test.json)");
+                    throw new Error("找不到主統計檔 (cb_data_integrated.json)，請檢查檔案名稱是否正確");
                 }
 
                 statistics = resMain['統計數據'];
                 auctionRawData = resMain['競拍原始資料'] || [];
                 let mainDB = resMain['CB資料庫'] || {};
 
-                // 核心修復：如果有讀取到名稱資料庫，將其合併進去
                 if (resNames) {
                     detailDiv.textContent = "正在整合 " + Object.keys(resNames).length + " 筆詳細資料...";
                     cbDatabase = { ...mainDB, ...resNames };
-                    console.log("資料庫合併成功，共 " + Object.keys(cbDatabase).length + " 筆");
+                    console.log("資料庫合併成功");
                 } else {
                     cbDatabase = mainDB;
                     console.warn("未偵測到 cb_names_database.json，僅使用主檔資料");
                 }
 
-                // 檢查必要欄位，防止崩潰
                 if (!statistics || !statistics['維度統計']) {
                     throw new Error("統計數據結構錯誤，請檢查 JSON 內容");
                 }
 
                 initializeUI();
-                
-                // 載入完成
                 loadingDiv.style.display = 'none';
                 document.querySelector('.container').style.display = 'block';
 
@@ -290,7 +285,7 @@
                     <div style="padding:30px; background:white; color:#d32f2f; border-radius:10px; text-align:center; max-width:80%;">
                         <h3 style="margin-bottom:10px;">❌ 系統啟動失敗</h3>
                         <p style="font-size:16px;">${error.message}</p>
-                        <p style="font-size:14px; color:#666; margin-top:10px;">請確認 GitHub 上已上傳 <b>cb_data_integrated_test.json</b> (統計) 與 <b>cb_names_database.json</b> (詳細資料)</p>
+                        <p style="font-size:14px; color:#666; margin-top:10px;">請確認 GitHub 上的檔名是否為 <b>cb_data_integrated.json</b></p>
                     </div>`;
             }
         }
@@ -405,7 +400,6 @@
                 const val = this.value.trim();
                 if (!val) { show('cbNameInfo', null); return; }
                 
-                // 搜尋邏輯優化
                 const found = Object.values(cbDatabase).find(d => d['名稱'] && d['名稱'].includes(val));
                 
                 if (found) {
@@ -622,7 +616,7 @@
             `;
 
             resultDiv.innerHTML = `
-                <div class="result-header"><h2>${result.cbName}</h2><div class="subtitle">資料驅動AI評估結果 (V3.13)</div></div>
+                <div class="result-header"><h2>${result.cbName}</h2><div class="subtitle">資料驅動AI評估結果 (V3.14)</div></div>
                 <div class="detail-section"><h3>📊 理論價格計算</h3><div style="text-align:center; padding:20px; background:#f8f9fa; border-radius:10px;"><div style="font-size:48px; font-weight:bold; color:#667eea;">${result.theoreticalPrice} 元</div><div style="color:#999;">= 股價 ${result.inputData.stockPrice} ÷ 轉價 ${result.inputData.conversionPrice} × 100</div></div></div>
                 <div class="detail-section"><h3>🔍 溢價率分解分析表</h3>${tableHtml}</div>
                 <div class="detail-section"><h3>💡 AI投標價格建議</h3><div class="price-grid"><div class="strategy-card conservative"><h4>🛡️ 保守策略</h4><div class="price">${result.bidPrices.conservative}</div></div><div class="strategy-card balanced"><h4>⚖️ 平衡策略</h4><div class="price">${result.bidPrices.balanced}</div></div><div class="strategy-card aggressive"><h4>🚀 積極策略</h4><div class="price">${result.bidPrices.aggressive}</div></div></div></div>
