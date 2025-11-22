@@ -3,297 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI智能可轉債競拍系統 v3.12 (終極直行版)</title>
-    
+    <title>Rex大叔的168台股投資教室 - 可轉債競拍數據</title>
     <style>
-        /* ================= 風格設定 (保持原本的美感) ================= */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* --- 這是樣式區 (CSS) --- */
         body {
-            font-family: 'Microsoft JhengHei', 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh; padding: 20px;
+            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
             color: #333;
         }
-        .container { max-width: 1600px; margin: 0 auto; background-color: transparent; }
 
-        .header {
-            background: white; border-radius: 15px; padding: 30px; margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
         }
-        .header h1 { color: #667eea; font-size: 32px; margin-bottom: 10px; }
-        .version-badge { background: #E91E63; color: white; padding: 4px 12px; border-radius: 15px; font-size: 14px; vertical-align: middle; margin-left: 10px; }
 
-        .evaluation-container { display: grid; grid-template-columns: 400px 1fr; gap: 20px; }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+
+        /* 搜尋框樣式 */
+        .search-box {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box; /* 確保內距不影響寬度 */
+        }
+
+        /* 表格樣式 */
+        .table-wrapper {
+            overflow-x: auto; /* 手機版可以左右滑動 */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #2980b9; /* Rex藍 */
+            color: white;
+            white-space: nowrap; /* 標題不換行 */
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 18px;
+            color: #e67e22;
+            font-weight: bold;
+            padding: 20px;
+        }
+
+        .error-msg {
+            color: red;
+            text-align: center;
+            font-weight: bold;
+        }
         
-        /* 輸入面板 */
-        .input-panel {
-            background: white; border-radius: 15px; padding: 25px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1); height: fit-content;
-        }
-        .form-section { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-        .form-section:last-child { border-bottom: none; }
-        .form-section h3 { color: #667eea; font-size: 16px; margin-bottom: 10px; font-weight: bold; }
-        
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; color: #555; font-size: 13px; margin-bottom: 5px; font-weight: bold; }
-        .form-group input, .form-group select {
-            width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;
-        }
-        .form-group input:focus { border-color: #667eea; outline: none; }
-
-        /* 按鈕特效 */
-        .btn-main {
-            width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold;
-            cursor: pointer; margin-top: 10px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-        .btn-main:active { transform: scale(0.98); }
-        .btn-demo {
-            width: 100%; padding: 10px; background: #009688; color: white; border: none; 
-            border-radius: 8px; font-size: 14px; cursor: pointer; margin-bottom: 10px;
-        }
-
-        /* 結果面板 */
-        .result-panel {
-            background: white; border-radius: 15px; padding: 30px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1); min-height: 400px;
-        }
-        
-        .result-box { display: none; } /* 預設隱藏 */
-        .result-box.show { display: block; animation: fadeIn 0.5s; }
-        
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .big-number-display {
-            background: #f8f9fa; padding: 20px; text-align: center; border-radius: 10px; margin-bottom: 20px;
-        }
-        .big-number-display .val { font-size: 48px; font-weight: bold; color: #667eea; }
-        
-        .strategy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
-        .strat-card { padding: 15px; border: 2px solid #eee; border-radius: 8px; text-align: center; }
-        .strat-card h4 { margin-bottom: 10px; font-size: 14px; color: #555; }
-        .strat-card .price { font-size: 24px; font-weight: bold; }
-        
-        .strat-card.low { background: #e8f5e9; border-color: #4CAF50; color: #2e7d32; }
-        .strat-card.mid { background: #fff3e0; border-color: #FF9800; color: #ef6c00; }
-        .strat-card.high { background: #ffebee; border-color: #f44336; color: #c62828; }
-
-        /* 表格 */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #333; color: white; padding: 10px; font-size: 13px; }
-        td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 14px; }
-        tr:nth-child(even) { background: #f9f9f9; }
-
-        @media (max-width: 1000px) {
-            .evaluation-container { grid-template-columns: 1fr; }
+        /* 頁尾 */
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #aaa;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="header">
-            <h1>🤖 AI智能可轉債競拍系統 <span class="version-badge">v3.12 終極版</span></h1>
-            <p style="color:#666;">Rex大叔專用 | 內建靜態資料庫 | 立即運算</p>
-        </div>
+<div class="container">
+    <h1>可轉債競拍數據系統</h1>
+    <div class="subtitle">Rex大叔的168台股投資教室</div>
 
-        <div class="evaluation-container">
-            <div class="input-panel">
-                <button type="button" class="btn-demo" onclick="fillDemo()">🪄 點我一鍵帶入範例資料</button>
-                
-                <div class="form-section">
-                    <h3>1. 標的與產業</h3>
-                    <div class="form-group">
-                        <label>CB名稱</label>
-                        <input type="text" id="cbName" placeholder="例如：台光電七">
-                    </div>
-                    <div class="form-group">
-                        <label>產業分類</label>
-                        <select id="industry">
-                            <option value="半導體業">半導體業</option>
-                            <option value="電腦及週邊設備業">電腦及週邊設備業</option>
-                            <option value="電子零組件業">電子零組件業</option>
-                            <option value="生技醫療業">生技醫療業</option>
-                            <option value="通信網路業">通信網路業</option>
-                            <option value="其他電子業">其他電子業</option>
-                            <option value="電機機械">電機機械</option>
-                        </select>
-                    </div>
-                </div>
+    <input type="text" id="searchInput" class="search-box" placeholder="🔍 輸入關鍵字搜尋 (例如：代號、名稱)...">
 
-                <div class="form-section">
-                    <h3>2. 發行條件</h3>
-                    <div class="form-group">
-                        <label>發行規模 (億元)</label>
-                        <input type="number" id="issueSize" value="20">
-                    </div>
-                    <div class="form-group">
-                        <label>擔保情況</label>
-                        <select id="guarantee">
-                            <option value="有擔保">有擔保</option>
-                            <option value="無擔保">無擔保</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>信用評等 (TCRI)</label>
-                        <select id="rating">
-                            <option value="1">TCRI 1-3 (優良)</option>
-                            <option value="4">TCRI 4-6 (中等)</option>
-                            <option value="7">TCRI 7-9 (風險)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h3>3. 價格計算</h3>
-                    <div class="form-group">
-                        <label>競拍截止日股價 (元)</label>
-                        <input type="number" id="stockPrice" placeholder="輸入股價">
-                    </div>
-                    <div class="form-group">
-                        <label>轉換價格 (元)</label>
-                        <input type="number" id="conversionPrice" placeholder="輸入轉價">
-                    </div>
-                </div>
-
-                <button type="button" class="btn-main" onclick="startCalculation()">🎯 開始AI評估</button>
-            </div>
-
-            <div class="result-panel">
-                <div id="welcomeText" style="text-align:center; padding-top:50px; color:#999;">
-                    <h2>👈 請在左側輸入資料</h2>
-                    <p>輸入完畢後點擊「開始AI評估」</p>
-                    <div style="font-size:60px; margin-top:20px;">📊</div>
-                </div>
-
-                <div id="resultBox" class="result-box">
-                    <h2 style="color:#333; border-bottom:2px solid #667eea; padding-bottom:10px; margin-bottom:20px;">評估結果：<span id="resName"></span></h2>
-                    
-                    <div class="big-number-display">
-                        <div style="font-size:14px; color:#666;">理論價格 (轉換價值)</div>
-                        <div class="val" id="resTheo">0.00</div>
-                        <div style="font-size:14px; color:#888; margin-top:5px;">公式：(股價 / 轉價) × 100</div>
-                    </div>
-
-                    <table style="margin-bottom:20px;">
-                        <thead>
-                            <tr>
-                                <th>維度</th>
-                                <th>條件</th>
-                                <th>歷史溢價參數</th>
-                                <th>權重</th>
-                            </tr>
-                        </thead>
-                        <tbody id="detailTable">
-                            </tbody>
-                        <tfoot>
-                            <tr style="background:#e3f2fd; font-weight:bold;">
-                                <td colspan="3" style="text-align:right; padding-right:15px; color:#0d47a1;">綜合預估最低溢價率</td>
-                                <td style="color:#d32f2f; font-size:16px;" id="resPremium">0%</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-
-                    <h3 style="margin-top:30px;">💡 Rex大叔 建議投標價格</h3>
-                    <div class="strategy-grid">
-                        <div class="strat-card low">
-                            <h4>🛡️ 保守 (95%)</h4>
-                            <div class="price" id="priceLow">0</div>
-                        </div>
-                        <div class="strat-card mid">
-                            <h4>⚖️ 合理 (100%)</h4>
-                            <div class="price" id="priceMid">0</div>
-                        </div>
-                        <div class="strat-card high">
-                            <h4>🚀 積極 (105%)</h4>
-                            <div class="price" id="priceHigh">0</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div id="statusMessage" class="loading">正在讀取數據資料庫...</div>
+    
+    <div class="table-wrapper">
+        <table id="dataTable">
+            <thead>
+                <tr id="tableHeadRow"></tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
     </div>
+    
+    <div class="footer">
+        Data Source: cb_data_integrated.json | Powered by Uncle Rex
+    </div>
+</div>
 
-    <script>
-        // 1. 範例資料填充功能
-        function fillDemo() {
-            document.getElementById('cbName').value = "台光電七 (範例)";
-            document.getElementById('industry').value = "電子零組件業";
-            document.getElementById('issueSize').value = "30";
-            document.getElementById('guarantee').value = "無擔保";
-            document.getElementById('rating').value = "4";
-            document.getElementById('stockPrice').value = "560";
-            document.getElementById('conversionPrice').value = "490.7";
-            
-            // 為了讓使用者知道有點擊成功
-            alert("🪄 範例資料已帶入！請點擊下方紫色按鈕進行計算。");
-        }
+<script>
+    /* --- 這是程式邏輯區 (JavaScript) --- */
+    
+    // 設定你的檔案名稱 (必須跟 GitHub 上一模一樣)
+    const DATA_FILE = './cb_data_integrated.json';
 
-        // 2. 核心計算邏輯
-        function startCalculation() {
-            // 取得輸入值
-            const stock = parseFloat(document.getElementById('stockPrice').value);
-            const conv = parseFloat(document.getElementById('conversionPrice').value);
-            const name = document.getElementById('cbName').value || "未命名標的";
-            
-            // 簡單防呆
-            if (isNaN(stock) || isNaN(conv) || stock <= 0 || conv <= 0) {
-                alert("⚠️ 請輸入正確的「股價」與「轉換價格」！");
-                return;
-            }
+    let rawData = []; // 儲存原始資料
 
-            // 計算理論價
-            const theoPrice = (stock / conv) * 100;
+    // 1. 網頁載入後立即執行
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchData();
+        
+        // 設定搜尋功能的監聽器
+        document.getElementById('searchInput').addEventListener('keyup', function(e) {
+            const keyword = e.target.value.toLowerCase();
+            filterData(keyword);
+        });
+    });
 
-            // 取得參數 (模擬資料庫邏輯)
-            const industry = document.getElementById('industry').value;
-            const guarantee = document.getElementById('guarantee').value;
-            
-            // 簡單的權重模擬 (為了確保能跑出結果，這裡直接寫邏輯)
-            let basePremium = 5.0; // 基礎溢價
-            
-            // 產業加分
-            if (industry === '半導體業' || industry === '電子零組件業') basePremium += 1.5;
-            if (industry === '生技醫療業') basePremium -= 1.0;
+    // 2. 讀取 JSON 檔案
+    function fetchData() {
+        fetch(DATA_FILE)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP 錯誤！狀態碼: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('數據讀取成功:', data);
+                
+                // 檢查資料格式，如果是物件包陣列，嘗試修正
+                if (!Array.isArray(data) && data.data && Array.isArray(data.data)) {
+                     rawData = data.data;
+                } else if (Array.isArray(data)) {
+                     rawData = data;
+                } else {
+                     // 如果只有單筆資料或格式特殊
+                     rawData = [data]; 
+                }
 
-            // 擔保加分
-            if (guarantee === '無擔保') basePremium += 2.5; // 無擔保通常溢價較高(因標的通常較強)或風險溢酬，這邊假設熱門股無擔保溢價高
+                if (rawData.length === 0) {
+                    document.getElementById('statusMessage').innerText = '資料庫是空的。';
+                    return;
+                }
 
-            // 理論價影響
-            if (theoPrice > 120) basePremium += 3.0;
-            else if (theoPrice < 90) basePremium -= 2.0;
+                document.getElementById('statusMessage').style.display = 'none'; // 隱藏載入中訊息
+                renderTable(rawData); // 畫出表格
+            })
+            .catch(error => {
+                console.error('讀取失敗:', error);
+                document.getElementById('statusMessage').className = 'error-msg';
+                document.getElementById('statusMessage').innerHTML = `
+                    讀取失敗。<br>
+                    請確認 GitHub 上是否有 <b>${DATA_FILE.replace('./','')}</b> 這個檔案。<br>
+                    錯誤訊息: ${error.message}
+                `;
+            });
+    }
 
-            // 最終計算
-            const finalPremium = basePremium;
-            const bidPriceBase = theoPrice * (1 + finalPremium / 100);
+    // 3. 動態產生表格 (自動抓取欄位名稱)
+    function renderTable(data) {
+        const theadRow = document.getElementById('tableHeadRow');
+        const tbody = document.getElementById('tableBody');
+        
+        theadRow.innerHTML = '';
+        tbody.innerHTML = '';
 
-            // 3. 渲染結果 (更新介面)
-            
-            // 隱藏歡迎詞，顯示結果框
-            document.getElementById('welcomeText').style.display = 'none';
-            const resBox = document.getElementById('resultBox');
-            resBox.style.display = 'block'; // 強制顯示
-            resBox.classList.add('show'); // 加動畫
+        if (data.length === 0) return;
 
-            // 填入數值
-            document.getElementById('resName').innerText = name;
-            document.getElementById('resTheo').innerText = theoPrice.toFixed(2);
-            document.getElementById('resPremium').innerText = finalPremium.toFixed(2) + "%";
+        // 取得所有的欄位名稱 (從第一筆資料抓 key)
+        const columns = Object.keys(data[0]);
 
-            // 填入表格詳細
-            const tbody = document.getElementById('detailTable');
-            tbody.innerHTML = `
-                <tr><td>理論價位</td><td>${theoPrice.toFixed(2)}</td><td>${(theoPrice > 100 ? '+偏高' : '-偏低')}</td><td>30%</td></tr>
-                <tr><td>產業分類</td><td>${industry}</td><td>${(industry.includes('電子') ? '+熱門' : '一般')}</td><td>20%</td></tr>
-                <tr><td>擔保情況</td><td>${guarantee}</td><td>${(guarantee==='無擔保' ? '+高溢價' : '一般')}</td><td>20%</td></tr>
-                <tr><td>市場情緒</td><td>近期熱度</td><td>預設參數</td><td>30%</td></tr>
-            `;
+        // 建立表頭 (th)
+        columns.forEach(col => {
+            const th = document.createElement('th');
+            th.textContent = col; // 欄位名稱
+            theadRow.appendChild(th);
+        });
 
-            // 填入建議價格
-            document.getElementById('priceLow').innerText = (bidPriceBase * 0.95).toFixed(2);
-            document.getElementById('priceMid').innerText = bidPriceBase.toFixed(2);
-            document.getElementById('priceHigh').innerText = (bidPriceBase * 1.05).toFixed(2);
-        }
-    </script>
+        // 建立內容 (tr, td)
+        data.forEach(item => {
+            const tr = document.createElement('tr');
+            columns.forEach(col => {
+                const td = document.createElement('td');
+                td.textContent = item[col] !== null ? item[col] : ''; // 如果是 null 就顯示空白
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 4. 搜尋過濾功能
+    function filterData(keyword) {
+        const filtered = rawData.filter(item => {
+            // 把這一行的所有值串成一個字串來搜尋
+            const rowString = Object.values(item).join(' ').toLowerCase();
+            return rowString.includes(keyword);
+        });
+        renderTable(filtered);
+    }
+
+</script>
+
 </body>
 </html>
