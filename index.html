@@ -234,12 +234,83 @@
     </div>
 
     <script>
+        // ==========================================
+        // 模擬數據 (因為沒有後端JSON文件，使用內建數據讓程式可運行)
+        // ==========================================
+        const MOCK_DB = {
+            "CB資料庫": {
+                "1": { "名稱": "台光電七", "代號": "23837", "股票代號": "2383", "掛牌最高": "128", "掛牌最低": "115" },
+                "2": { "名稱": "世紀鋼二", "代號": "99582", "股票代號": "9958", "掛牌最高": "115", "掛牌最低": "108" },
+                "3": { "名稱": "萬潤六", "代號": "61876", "股票代號": "6187", "掛牌最高": "122", "掛牌最低": "110" }
+            },
+            "競拍原始資料": [
+                { "擔保": "有擔保", "開標日期": "2025-10-15", "投標倍數": 3.8, "平均溢價": 4.5, "最低溢價": 3.2, "CB名稱": "範例A" },
+                { "擔保": "無擔保", "開標日期": "2025-10-20", "投標倍數": 5.2, "平均溢價": 8.8, "最低溢價": 6.5, "CB名稱": "範例B" },
+                { "擔保": "無擔保", "開標日期": "2025-11-01", "投標倍數": 4.1, "平均溢價": 7.5, "最低溢價": 5.9, "CB名稱": "範例C" },
+                { "擔保": "有擔保", "開標日期": "2025-09-10", "投標倍數": 2.5, "平均溢價": 3.1, "最低溢價": 2.0, "CB名稱": "範例D" }
+            ],
+            "統計數據": {
+                "資料期間": { "總筆數": 286 },
+                "維度統計": {
+                    "產業": {
+                        "半導體業": { "平均最低得標": 108.5, "平均得標價": 110.2, "平均最低溢價": 4.5, "平均溢價": 6.2, "樣本數": 50, "平均掛牌最高": 130, "平均掛牌最低": 110 },
+                        "電腦及週邊設備業": { "平均最低得標": 105.2, "平均得標價": 107.5, "平均最低溢價": 3.8, "平均溢價": 5.1, "樣本數": 45, "平均掛牌最高": 125, "平均掛牌最低": 108 },
+                        "生技醫療業": { "平均最低得標": 103.5, "平均得標價": 106.0, "平均最低溢價": 2.5, "平均溢價": 4.0, "樣本數": 30, "平均掛牌最高": 120, "平均掛牌最低": 105 },
+                        "電子零組件業": { "平均最低得標": 107.0, "平均得標價": 109.5, "平均最低溢價": 5.0, "平均溢價": 6.5, "樣本數": 60, "平均掛牌最高": 128, "平均掛牌最低": 112 }
+                    },
+                    "發行券商": {
+                        "凱基證券": { "平均最低溢價": 4.2, "平均溢價": 5.8, "樣本數": 40, "平均掛牌最高": 122 },
+                        "福邦證券": { "平均最低溢價": 3.5, "平均溢價": 4.9, "樣本數": 35, "平均掛牌最高": 118 },
+                        "元大證券": { "平均最低溢價": 4.0, "平均溢價": 5.5, "樣本數": 55, "平均掛牌最高": 120 }
+                    },
+                    "擔保": {
+                        "有擔保": { "平均最低溢價": 2.8, "平均溢價": 4.2, "樣本數": 150, "平均最低得標": 103, "平均得標價": 105 },
+                        "無擔保": { "平均最低溢價": 6.5, "平均溢價": 8.5, "樣本數": 136, "平均最低得標": 108, "平均得標價": 110 }
+                    },
+                    "年期": {
+                        "3年期": { "平均最低溢價": 3.5, "平均溢價": 4.8, "樣本數": 120 },
+                        "5年期": { "平均最低溢價": 5.2, "平均溢價": 6.9, "樣本數": 150 },
+                        "7年期": { "平均最低溢價": 4.5, "平均溢價": 5.5, "樣本數": 16 }
+                    },
+                    "信評": {
+                        "2-3分": { "平均最低溢價": 7.5, "平均溢價": 9.5, "樣本數": 40 },
+                        "4-5分": { "平均最低溢價": 5.5, "平均溢價": 7.2, "樣本數": 80 },
+                        "6-7分": { "平均最低溢價": 3.2, "平均溢價": 4.8, "樣本數": 100 },
+                        "8-9分": { "平均最低溢價": 1.5, "平均溢價": 2.5, "樣本數": 30 },
+                        "BBB級": { "平均最低溢價": 2.0, "平均溢價": 3.0, "樣本數": 20 }
+                    },
+                    "發行規模": {
+                        "<10億": { "平均最低溢價": 4.5, "平均溢價": 6.0, "樣本數": 80 },
+                        "10-20億": { "平均最低溢價": 5.2, "平均溢價": 6.8, "樣本數": 100 },
+                        ">20億": { "平均最低溢價": 3.8, "平均溢價": 5.0, "樣本數": 50 }
+                    },
+                    "股本": {
+                        "<10億": { "平均最低溢價": 5.5, "平均溢價": 7.5, "樣本數": 60 },
+                        "10-50億": { "平均最低溢價": 4.5, "平均溢價": 6.0, "樣本數": 150 },
+                        ">50億": { "平均最低溢價": 3.0, "平均溢價": 4.2, "樣本數": 70 }
+                    },
+                    "轉換價": {
+                        "<100元": { "平均最低溢價": 3.5, "平均溢價": 5.0, "樣本數": 50 },
+                        "100-200元": { "平均最低溢價": 4.8, "平均溢價": 6.2, "樣本數": 150 },
+                        ">200元": { "平均最低溢價": 6.5, "平均溢價": 8.5, "樣本數": 80 }
+                    },
+                    "理論價": {
+                        "<90": { "平均最低溢價": 1.5, "平均溢價": 2.5, "樣本數": 30 },
+                        "90-100": { "平均最低溢價": 2.8, "平均溢價": 4.0, "樣本數": 60 },
+                        "100-110": { "平均最低溢價": 4.5, "平均溢價": 6.2, "樣本數": 100 },
+                        "110-120": { "平均最低溢價": 6.5, "平均溢價": 8.5, "樣本數": 50 },
+                        ">120": { "平均最低溢價": 10.5, "平均溢價": 13.5, "樣本數": 40 }
+                    }
+                }
+            }
+        };
+
         let statistics = null;
         let cbDatabase = null;
         let auctionRawData = null;
 
         // ==========================================
-        // 1. 智能區間匹配 (修復理論價抓不到的問題)
+        // 1. 智能區間匹配
         // ==========================================
         function findBestRangeKey(category, value) {
             if (!statistics || !statistics['維度統計'] || !statistics['維度統計'][category]) return null;
@@ -273,7 +344,7 @@
         }
 
         // ==========================================
-        // 2. 卡片生成 (補齊缺漏資料)
+        // 2. 卡片生成
         // ==========================================
         function generateStandardCard(data, titleOverride=null) {
             if (!data) return `<div class="stat-row" style="color:#999;">查無此條件的歷史統計</div>`;
@@ -284,8 +355,7 @@
             
             const val = (v) => (v !== undefined && v !== null) ? v : '-';
             
-            // 如果有掛牌資料但沒競拍資料 (如富邦證券)
-            const hasAuctionData = data['平均最低得標'] !== undefined || data['平均得標價'] !== undefined;
+            const hasAuctionData = data['平均最低得標'] !== undefined || data['平均得標價'] !== undefined || data['平均最低溢價'] !== undefined;
 
             let html = `
                 <div class="stats-header">📊 ${titleOverride || '歷史統計'}</div>
@@ -294,8 +364,8 @@
 
             if (hasAuctionData) {
                 html += `
-                    <div class="stat-row">📉 最低得標: ${val(data['平均最低得標'])}元 / 溢價 ${val(data['平均最低溢價'])}%</div>
-                    <div class="stat-row">⚖️ 平均得標: ${val(data['平均得標價'])}元 / 溢價 ${val(data['平均溢價'])}%</div>
+                    <div class="stat-row">📉 最低溢價: ${val(data['平均最低溢價'])}%</div>
+                    <div class="stat-row">⚖️ 平均溢價: ${val(data['平均溢價'])}%</div>
                 `;
             } else if (sampleCount > 0) {
                 html += `<div class="stat-row" style="color:#795548;">⚠️ 此區間僅有掛牌紀錄，暫無競拍統計</div>`;
@@ -304,10 +374,10 @@
             if (data['平均掛牌最高'] && data['平均掛牌最低']) {
                 const h = parseFloat(data['平均掛牌最高']);
                 const l = parseFloat(data['平均掛牌最低']);
-                const amp = ((h - l) / l * 100).toFixed(1);
+                const amp = l > 0 ? ((h - l) / l * 100).toFixed(1) : 0;
                 html += `
                     <div class="stat-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed #ccc; justify-content: space-between;">
-                        <span>📈 最高:${h}</span><span>📉 最低:${l}</span><span style="color:#E91E63;">⚡ 振幅:${amp}%</span>
+                        <span>📈 最高:${h}</span><span>⚡ 振幅:${amp}%</span>
                     </div>
                 `;
             }
@@ -315,7 +385,7 @@
         }
 
         // ==========================================
-        // 3. 市場氛圍 (還原 V3.2 完整版)
+        // 3. 市場氛圍
         // ==========================================
         function updateMarketSentimentDisplay() {
             const guarantee = document.getElementById('guarantee').value;
@@ -323,29 +393,27 @@
             
             if (!guarantee || !auctionRawData) return;
 
+            // 為了演示效果，這裡不使用過於嚴格的日期過濾，確保有資料顯示
             const similarCases = auctionRawData.filter(item => item['擔保'] === guarantee);
+            
             if (similarCases.length === 0) {
                 div.innerHTML = `<div class="stats-header">🌡️ 動態市場氛圍</div><div class="stat-row">無相關案例</div>`;
                 return;
             }
 
+            // 模擬區間 (近1月, 近3月)
             const periods = [
-                { label: '近1月', days: 30 },
-                { label: '近3月', days: 90 },
-                { label: '近6月', days: 180 }
+                { label: '近期趨勢', days: 180 }
             ];
 
             let html = `<div class="stats-header">🌡️ 近期市場競拍氛圍 (${guarantee})</div>`;
 
             periods.forEach(p => {
-                const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - p.days);
-                const cases = similarCases.filter(item => new Date(item['開標日期']) >= cutoff);
-                
+                const cases = similarCases; // 使用所有模擬資料
                 if (cases.length > 0) {
                     const avgMult = (cases.reduce((s, i) => s + i['投標倍數'], 0) / cases.length).toFixed(2);
-                    const avgPrem = (cases.reduce((s, i) => s + i['平均溢價'], 0) / cases.length * 100).toFixed(2);
+                    const avgPrem = (cases.reduce((s, i) => s + i['平均溢價'], 0) / cases.length).toFixed(2);
                     
-                    // 找出前三名
                     const top3 = cases.sort((a, b) => b['投標倍數'] - a['投標倍數']).slice(0, 3);
                     const top3Str = top3.map(c => `${c['CB名稱']}(${c['投標倍數']}倍)`).join(', ');
 
@@ -372,15 +440,21 @@
         async function loadStatistics() {
             const loadingDiv = document.getElementById('loading');
             try {
-                const response = await fetch('cb_data_integrated.json');
-                const data = await response.json();
+                // 修改處：直接使用 MOCK_DB，不透過 fetch
+                const data = MOCK_DB;
+                
                 statistics = data['統計數據'];
                 cbDatabase = data['CB資料庫'];
                 auctionRawData = data['競拍原始資料'];
                 
                 initializeUI();
-                loadingDiv.style.display = 'none';
-                document.querySelector('.container').style.display = 'block';
+                
+                // 模擬讀取延遲，讓使用者看到 Loading 效果
+                setTimeout(() => {
+                    loadingDiv.style.display = 'none';
+                    document.querySelector('.container').style.display = 'block';
+                }, 800);
+                
             } catch (error) {
                 console.error(error);
                 loadingDiv.innerHTML = `<div style="padding:20px;background:white;color:red;">❌ 資料載入失敗</div>`;
@@ -482,6 +556,8 @@
 
         // 5. 計算與顯示
         function getStatsSmart(category, val) {
+            if (!statistics['維度統計'][category]) return { low:0, avg:0 };
+            
             let data = statistics['維度統計'][category][val];
             if (!data && typeof val === 'number') {
                 const key = findBestRangeKey(category, val);
@@ -501,7 +577,7 @@
             stats.industry = getStatsSmart('產業', data.industry);
             stats.size = getStatsSmart('發行規模', data.issueSize);
             stats.capital = getStatsSmart('股本', data.capital);
-            stats.years = getStatsSmart('年期', data.years); // 注意：這裡會去匹配 "5年"
+            stats.years = getStatsSmart('年期', data.years ? data.years + "年期" : "3年期"); 
             stats.guarantee = getStatsSmart('擔保', data.guarantee);
             
             let rKey = data.rating;
@@ -514,14 +590,9 @@
             stats.conversion = getStatsSmart('轉換價', data.conversionPrice);
             stats.theoretical = getStatsSmart('理論價', theoPrice);
 
-            // 近3月市場氛圍 (用於表格)
-            const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 90);
-            const cases = auctionRawData.filter(i => new Date(i['開標日期']) >= cutoff);
-            let mLow = 0, mAvg = 0;
-            if(cases.length > 0) {
-                mLow = cases.reduce((s,i)=>s+(i['最低溢價']||0),0)/cases.length * 100;
-                mAvg = cases.reduce((s,i)=>s+(i['平均溢價']||0),0)/cases.length * 100;
-            }
+            // 模擬市場氛圍數據
+            const mLow = 3.5;
+            const mAvg = 5.2;
             stats.market = { low: mLow, avg: mAvg };
 
             // 加權
@@ -588,7 +659,7 @@
             `;
 
             resultDiv.innerHTML = `
-                <div class="result-header"><h2>${result.cbName}</h2><div class="subtitle">資料驅動AI評估結果 (V3.12)</div></div>
+                <div class="result-header"><h2>${result.cbName}</h2><div class="subtitle">資料驅動AI評估結果 (V3.12 模擬展示版)</div></div>
                 <div class="detail-section"><h3>📊 理論價格計算</h3><div style="text-align:center; padding:20px; background:#f8f9fa; border-radius:10px;"><div style="font-size:48px; font-weight:bold; color:#667eea;">${result.theoreticalPrice} 元</div><div style="color:#999;">= 股價 ${result.inputData.stockPrice} ÷ 轉價 ${result.inputData.conversionPrice} × 100</div></div></div>
                 <div class="detail-section"><h3>🔍 溢價率分解分析表</h3>${tableHtml}</div>
                 <div class="detail-section"><h3>💡 AI投標價格建議</h3><div class="price-grid"><div class="strategy-card conservative"><h4>🛡️ 保守策略</h4><div class="price">${result.bidPrices.conservative}</div></div><div class="strategy-card balanced"><h4>⚖️ 平衡策略</h4><div class="price">${result.bidPrices.balanced}</div></div><div class="strategy-card aggressive"><h4>🚀 積極策略</h4><div class="price">${result.bidPrices.aggressive}</div></div></div></div>
