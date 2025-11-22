@@ -3,228 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rex大叔的168台股投資教室 - 可轉債競拍數據</title>
+    <title>Rex大叔的可轉債資料庫</title>
     <style>
-        /* --- 這是樣式區 (CSS) --- */
+        /* 簡單乾淨的樣式，不花俏 */
         body {
-            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 20px;
+            font-family: "Microsoft JhengHei", sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
             color: #333;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: #fff;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border-radius: 8px;
-        }
-
-        h1 {
-            color: #2c3e50;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #7f8c8d;
-            margin-bottom: 30px;
-        }
-
-        /* 搜尋框樣式 */
-        .search-box {
-            width: 100%;
+        h1, h2 { text-align: center; color: #0056b3; }
+        
+        /* 統計資訊區塊 */
+        .stats-box {
+            background: #eef2f5;
             padding: 15px;
             margin-bottom: 20px;
-            font-size: 16px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            box-sizing: border-box; /* 確保內距不影響寬度 */
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 0.9em;
+            line-height: 1.6;
         }
 
         /* 表格樣式 */
-        .table-wrapper {
-            overflow-x: auto; /* 手機版可以左右滑動 */
+        .table-container {
+            overflow-x: auto; /* 手機上可左右滑動 */
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-
         th, td {
-            padding: 12px 15px;
+            border: 1px solid #ddd;
+            padding: 10px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            white-space: nowrap; /* 避免內容換行太醜 */
         }
-
         th {
-            background-color: #2980b9; /* Rex藍 */
+            background-color: #0056b3; /* Rex藍 */
             color: white;
-            white-space: nowrap; /* 標題不換行 */
             position: sticky;
             top: 0;
         }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        tr:hover { background-color: #e6f7ff; }
 
-        tr:hover {
-            background-color: #f1f1f1;
-        }
-
-        .loading {
-            text-align: center;
-            font-size: 18px;
-            color: #e67e22;
-            font-weight: bold;
-            padding: 20px;
-        }
-
-        .error-msg {
-            color: red;
-            text-align: center;
-            font-weight: bold;
-        }
-        
-        /* 頁尾 */
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            font-size: 12px;
-            color: #aaa;
-        }
+        .error { color: red; font-weight: bold; text-align: center; margin: 20px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>可轉債競拍數據系統</h1>
-    <div class="subtitle">Rex大叔的168台股投資教室</div>
-
-    <input type="text" id="searchInput" class="search-box" placeholder="🔍 輸入關鍵字搜尋 (例如：代號、名稱)...">
-
-    <div id="statusMessage" class="loading">正在讀取數據資料庫...</div>
+    <h1>Rex大叔 - AI智能可轉債競拍系統</h1>
     
-    <div class="table-wrapper">
-        <table id="dataTable">
-            <thead>
-                <tr id="tableHeadRow"></tr>
-            </thead>
-            <tbody id="tableBody">
-                </tbody>
+    <div id="statsDisplay" class="stats-box" style="display:none;">
+        <h3>資料庫統計摘要</h3>
+        <div id="statsContent"></div>
+    </div>
+
+    <h2>詳細資料列表</h2>
+    <div class="table-container">
+        <table id="cbTable">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
         </table>
     </div>
     
-    <div class="footer">
-        Data Source: cb_data_integrated.json | Powered by Uncle Rex
-    </div>
-</div>
+    <div id="statusMsg" style="text-align:center; margin-top:20px;">正在讀取資料...</div>
 
 <script>
-    /* --- 這是程式邏輯區 (JavaScript) --- */
-    
-    // 設定你的檔案名稱 (必須跟 GitHub 上一模一樣)
+    // 設定檔名 (與你的 GitHub 截圖一致)
     const DATA_FILE = './cb_data_integrated.json';
 
-    let rawData = []; // 儲存原始資料
-
-    // 1. 網頁載入後立即執行
-    document.addEventListener('DOMContentLoaded', () => {
-        fetchData();
-        
-        // 設定搜尋功能的監聽器
-        document.getElementById('searchInput').addEventListener('keyup', function(e) {
-            const keyword = e.target.value.toLowerCase();
-            filterData(keyword);
+    // 啟動讀取
+    fetch(DATA_FILE)
+        .then(response => {
+            if (!response.ok) throw new Error("無法找到檔案，請確認檔名是否正確。");
+            return response.json();
+        })
+        .then(data => {
+            console.log("原始數據:", data); // 開發者工具可看
+            document.getElementById('statusMsg').style.display = 'none';
+            processData(data);
+        })
+        .catch(err => {
+            document.getElementById('statusMsg').innerHTML = `<div class="error">讀取失敗：${err.message}</div>`;
         });
-    });
 
-    // 2. 讀取 JSON 檔案
-    function fetchData() {
-        fetch(DATA_FILE)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP 錯誤！狀態碼: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('數據讀取成功:', data);
-                
-                // 檢查資料格式，如果是物件包陣列，嘗試修正
-                if (!Array.isArray(data) && data.data && Array.isArray(data.data)) {
-                     rawData = data.data;
-                } else if (Array.isArray(data)) {
-                     rawData = data;
-                } else {
-                     // 如果只有單筆資料或格式特殊
-                     rawData = [data]; 
-                }
+    function processData(data) {
+        let listData = [];
+        let statsData = null;
 
-                if (rawData.length === 0) {
-                    document.getElementById('statusMessage').innerText = '資料庫是空的。';
-                    return;
+        // 1. 嘗試解析結構：分辨哪個是統計，哪個是清單
+        // 判斷邏輯：如果 data 本身就是陣列 -> 直接用
+        // 如果 data 是物件，去找裡面哪個 value 是陣列
+        
+        if (Array.isArray(data)) {
+            listData = data;
+        } else {
+            // 它是物件，我們來找找看鑰匙
+            if (data["統計數據"]) {
+                statsData = data["統計數據"];
+            }
+            
+            // 優先尋找可能的清單名稱
+            if (data["競拍原始資料"] && Array.isArray(data["競拍原始資料"])) {
+                listData = data["競拍原始資料"];
+            } else if (data["CB資料庫"] && Array.isArray(data["CB資料庫"])) {
+                listData = data["CB資料庫"];
+            } else if (data["data"] && Array.isArray(data["data"])) {
+                listData = data["data"];
+            } else {
+                // 如果找不到明顯的名字，就找裡面任何一個是陣列的東西
+                for (let key in data) {
+                    if (Array.isArray(data[key])) {
+                        listData = data[key];
+                        break; // 找到第一個陣列就當作是它了
+                    }
                 }
+            }
+        }
 
-                document.getElementById('statusMessage').style.display = 'none'; // 隱藏載入中訊息
-                renderTable(rawData); // 畫出表格
-            })
-            .catch(error => {
-                console.error('讀取失敗:', error);
-                document.getElementById('statusMessage').className = 'error-msg';
-                document.getElementById('statusMessage').innerHTML = `
-                    讀取失敗。<br>
-                    請確認 GitHub 上是否有 <b>${DATA_FILE.replace('./','')}</b> 這個檔案。<br>
-                    錯誤訊息: ${error.message}
-                `;
-            });
+        // 2. 顯示統計數據 (如果有)
+        if (statsData) {
+            renderStats(statsData);
+        }
+
+        // 3. 顯示表格
+        if (listData.length > 0) {
+            renderTable(listData);
+        } else {
+            document.getElementById('statusMsg').innerHTML = 
+                `<div class="error">資料庫讀取成功，但找不到可顯示的列表資料(Array)。<br>請確認 JSON 內是否包含 '競拍原始資料' 或 'CB資料庫' 陣列。</div>`;
+            document.getElementById('statusMsg').style.display = 'block';
+        }
     }
 
-    // 3. 動態產生表格 (自動抓取欄位名稱)
+    function renderStats(stats) {
+        const container = document.getElementById('statsDisplay');
+        const content = document.getElementById('statsContent');
+        container.style.display = 'block';
+        
+        // 簡單把統計數據轉成文字顯示
+        // 這裡只抓第一層或"資料期間"
+        let html = "";
+        if (stats["資料期間"]) {
+            html += `<strong>資料期間：</strong> ${stats["資料期間"]["開始日期"]} ~ ${stats["資料期間"]["結束日期"]} (總筆數: ${stats["資料期間"]["總筆數"]})<br>`;
+        }
+        content.innerHTML = html;
+    }
+
     function renderTable(data) {
-        const theadRow = document.getElementById('tableHeadRow');
+        const thead = document.getElementById('tableHead');
         const tbody = document.getElementById('tableBody');
         
-        theadRow.innerHTML = '';
-        tbody.innerHTML = '';
-
-        if (data.length === 0) return;
-
-        // 取得所有的欄位名稱 (從第一筆資料抓 key)
+        // 取得所有欄位名稱 (從第一筆資料)
         const columns = Object.keys(data[0]);
 
-        // 建立表頭 (th)
+        // 建立表頭
+        let headerHTML = "<tr>";
         columns.forEach(col => {
-            const th = document.createElement('th');
-            th.textContent = col; // 欄位名稱
-            theadRow.appendChild(th);
+            headerHTML += `<th>${col}</th>`;
         });
+        headerHTML += "</tr>";
+        thead.innerHTML = headerHTML;
 
-        // 建立內容 (tr, td)
-        data.forEach(item => {
-            const tr = document.createElement('tr');
+        // 建立內容
+        let bodyHTML = "";
+        data.forEach(row => {
+            bodyHTML += "<tr>";
             columns.forEach(col => {
-                const td = document.createElement('td');
-                td.textContent = item[col] !== null ? item[col] : ''; // 如果是 null 就顯示空白
-                tr.appendChild(td);
+                let val = row[col];
+                // 如果值是物件(例如裡面還有細項)，轉成文字以免顯示 [object Object]
+                if (typeof val === 'object' && val !== null) {
+                    val = JSON.stringify(val); 
+                }
+                bodyHTML += `<td>${val !== null ? val : ''}</td>`;
             });
-            tbody.appendChild(tr);
+            bodyHTML += "</tr>";
         });
+        tbody.innerHTML = bodyHTML;
     }
-
-    // 4. 搜尋過濾功能
-    function filterData(keyword) {
-        const filtered = rawData.filter(item => {
-            // 把這一行的所有值串成一個字串來搜尋
-            const rowString = Object.values(item).join(' ').toLowerCase();
-            return rowString.includes(keyword);
-        });
-        renderTable(filtered);
-    }
-
 </script>
 
 </body>
